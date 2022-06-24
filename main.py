@@ -1,5 +1,7 @@
-from time import sleep
-from tqdm.notebook import tqdm
+def all_chars_in_dataset(dataset: list) -> list:
 
-for i in tqdm(range(100)):
-    sleep(3)
+    all_chars = set()
+    for d in dataset:
+        chars = set(dataset)
+        all_chars = all_chars | chars
+    return list(sorted(all_chars))
