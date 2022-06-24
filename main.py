@@ -96,21 +96,3 @@ class SampleMaker:
             return self.char_to_int[char]
         else:
             return self.char_to_int['<UNK>']
-
-            
-
-        
-            
-                
-
-
-
-
-            
-    def 
-            
-                
-
-
-
-        
