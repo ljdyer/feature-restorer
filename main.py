@@ -10,7 +10,6 @@ Assumptions:
 # TODO: use memmap?
 
 
-import re
 import sympy
 import pandas as pd
 import numpy as np
@@ -18,6 +17,7 @@ from tqdm.notebook import tqdm as notebook_tqdm
 from tqdm import tqdm as non_notebook_tqdm
 import psutil
 import pickle
+import os
 
 # ====================
 def is_running_from_ipython():
@@ -36,31 +36,40 @@ else:
 
 
 class SampleMaker:
+    """
+    name: str,
+    data: list,
+    capitalisation: bool,
+    spaces: bool,
+    other_features: list,
+    seq_length: int,
+    """
 
     # ====================
-    def __init__(self,
-                 data: list,
-                 capitalisation: bool,
-                 spaces: bool,
-                 other_features: list,
-                 seq_length: int,
-                 pickle_path: str,
-                 train_sample_npy_path: str):
+    def __init__(self, attrs: dict = None, load_path: str = None):
 
-        self.data = data
-        self.capitalisation = capitalisation
-        self.spaces = spaces
-        self.other_features = other_features
-        self.seq_length = seq_length
-        self.pickle_path = pickle_path
-        self.train_sample_npy_path = train_sample_npy_path
-        if self.spaces:
-            self.feature_chars = other_features + [' ']
+        if attrs is not None:
+            self.__dict__.update(attrs)
+        elif load_path is not None:
+            with open(load_path, 'rb') as f:
+                attrs = pickle.load(f)
+            self.__dict__.update(attrs)
         else:
-            self.feature_chars = other_features
+            raise ValueError('You must specify either attrs or load_path.')
+
+        if self.spaces:
+            self.feature_chars = self.other_features + [' ']
+        else:
+            self.feature_chars = self.other_features
         self.feature_char_to_prime = {char: sympy.prime(idx+2) for idx, char in enumerate(self.feature_chars)}
         self.prime_to_feature_char = {p: c for c, p in self.feature_char_to_prime.items()}
         self.output_classes = set()
+
+        if not os.path.exists(self.name):
+            os.makedirs(self.name)
+        self.class_attrs_path = os.path.join(self.name, 'class_attrs.pickle')
+        self.train_samples_path = os.path.join(self.name, 'train_samples.npy')
+
         self.generate_char_maps()
         self.save()
         self.generate_samples()
@@ -87,26 +96,28 @@ class SampleMaker:
     def generate_samples(self):
 
         all_samples = []
-        pbar = my_tqdm(range(len(data)))
+        pbar = my_tqdm(range(len(self.data)))
         for i in pbar:
-            pbar.set_postfix({'ram_usage': psutil.virtual_memory().percent})
+            pbar.set_postfix({
+                'ram_usage': psutil.virtual_memory().percent,
+                'num_samples': len(all_samples),
+                'estimated_num_samples': len(all_samples) * (len(pbar) / (pbar.n + 1))
+            })
             samples = self.datapoint_to_samples(i)
             if samples:
                 all_samples.extend(samples)
         all_samples_array = np.array(all_samples)
-        np.save(self.train_sample_npy_path, all_samples_array)
+        np.save(self.train_samples_path, all_samples_array)
         self.save()
 
     # ====================
     def save(self):
 
-        member_variables = self.__dict__.copy()
-        member_variables['data'] = None
-        with open(self.pickle_path, 'wb') as f:
-            pickle.dump(member_variables, f)
+        class_attrs = self.__dict__.copy()
+        del class_attrs['data']
+        with open(self.class_attrs_path, 'wb') as f:
+            pickle.dump(class_attrs, f)
 
-
-    
     # ====================
     def datapoint_to_samples(self, datapoint_index: int) -> list:
 
@@ -118,6 +129,7 @@ class SampleMaker:
             samples = [s for s in samples if s is not None]
         else:
             raise ValueError('Not implemented yet when spaces=False')
+        return samples
 
     # ====================
     def substr_to_sample(self, substr: str) -> tuple:
@@ -167,11 +179,15 @@ if __name__ == "__main__":
 
     data_path = 'TED_TRAIN.csv'
     data = pd.read_csv(data_path)['all_cleaned'].to_list()
-    sample_maker = SampleMaker(data,
-                               capitalisation=True,
-                               spaces=True, 
-                               other_features=list('.,'),
-                               seq_length=100,
-                               pickle_path='sample_maker.pickle',
-                               train_sample_npy_path='train_samples.npy')
-    print(sample_maker.datapoint_to_samples(0))
+    attrs = {
+        'name': 'TED_TALKS',
+        'data': data,
+        'capitalisation': True,
+        'spaces': True, 
+        'other_features': list('.,'),
+        'seq_length': 100
+    }
+    sample_maker = SampleMaker(attrs)
+    # print(psutil.virtual_memory().percent)
+    # x = np.load('TED_TALKS/train_samples.npy')
+    # print(psutil.virtual_memory().percent)

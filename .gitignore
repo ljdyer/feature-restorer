@@ -1,4 +1,6 @@
 TED_TRAIN.csv
+*.npy
+*.pickle
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
