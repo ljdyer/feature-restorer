@@ -75,6 +75,8 @@ class SampleMaker:
                 class_list.append(1)
             while chars[0] in self.feature_chars:
                 this_feature_char = chars.pop(0)
+                print(class_list)
+                print(type(class_list))
                 class_list[-1] *= self.feature_char_to_prime[this_feature_char]
         assert len(output_chars) == self.seq_length
         assert len(class_list) == self.seq_length
