@@ -55,6 +55,7 @@ class SampleMaker:
     def datapoint_to_samples(self, datapoint: str) -> list:
 
         print(datapoint)
+        return datapoint
         # if self.spaces:
         #     print(datapoint)
         #     print(type(datapoint))
