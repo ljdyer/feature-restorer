@@ -56,7 +56,14 @@ class SampleMaker:
 
         if self.spaces:
             words = datapoint.split()
-            substrs = [' '.join(words[i:]) for i in range(len(words))]
+            substrs = []
+            for i in range(len(words)):
+                try:
+                    substrs.append(' '.join(words[i:]))
+                except:
+                    print(words[i])
+                    quit()
+            # substrs = [ for i in range(len(words))]
             substrs = [s for s in substrs
                        if len(re.sub(rf"[{''.join(self.feature_chars)}]", '', s)) > self.seq_length]
             samples = []
