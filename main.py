@@ -55,8 +55,13 @@ class SampleMaker:
     def datapoint_to_samples(self, datapoint: str) -> list:
 
         if self.spaces:
+
             words = datapoint.split()
-            substrs = []
+            try:
+                substrs = []
+            except:
+                print('Huh?')
+                quit()
             for i in range(len(words)):
                 try:
                     substrs.append(' '.join(words[i:]))
