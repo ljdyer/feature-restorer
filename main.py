@@ -56,7 +56,7 @@ class SampleMaker:
 
         if self.spaces:
             words = datapoint.split()
-            substrs = [' '.join(words[i:] for i in range(len(words)))]
+            substrs = [' '.join(words[i:]) for i in range(len(words))]
             substrs = [s for s in substrs
                        if len(re.sub(rf"[{''.join(self.feature_chars)}]", '', s)) > self.seq_length]
             samples = []
@@ -64,6 +64,7 @@ class SampleMaker:
                 this_sample = self.substr_to_sample(substr)
                 if this_sample:
                     samples.append(this_sample)
+            return samples
         else:
             raise ValueError('Not implemented yet when spaces=False')
 
