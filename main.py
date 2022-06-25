@@ -13,6 +13,27 @@ Assumptions:
 import re
 import sympy
 import pandas as pd
+import numpy as np
+from tqdm.notebook import tqdm as notebook_tqdm
+from tqdm import tqdm as non_notebook_tqdm
+import psutil
+import pickle
+
+# ====================
+def is_running_from_ipython():
+    try:
+        from IPython import get_ipython
+        return True
+    except ModuleNotFoundError:
+        return False
+    
+
+if is_running_from_ipython():
+    my_tqdm = notebook_tqdm
+else:
+    my_tqdm = non_notebook_tqdm
+
+
 
 class SampleMaker:
 
@@ -22,20 +43,27 @@ class SampleMaker:
                  capitalisation: bool,
                  spaces: bool,
                  other_features: list,
-                 seq_length: int):
+                 seq_length: int,
+                 pickle_path: str,
+                 train_sample_npy_path: str):
 
         self.data = data
         self.capitalisation = capitalisation
         self.spaces = spaces
         self.other_features = other_features
         self.seq_length = seq_length
+        self.pickle_path = pickle_path
+        self.train_sample_npy_path = train_sample_npy_path
         if self.spaces:
             self.feature_chars = other_features + [' ']
         else:
             self.feature_chars = other_features
         self.feature_char_to_prime = {char: sympy.prime(idx+2) for idx, char in enumerate(self.feature_chars)}
         self.prime_to_feature_char = {p: c for c, p in self.feature_char_to_prime.items()}
+        self.output_classes = set()
         self.generate_char_maps()
+        self.save()
+        self.generate_samples()
 
     # ====================
     def generate_char_maps(self):
@@ -56,33 +84,38 @@ class SampleMaker:
         self.int_to_char = {i: c for c, i in self.char_to_int.items()}
 
     # ====================
+    def generate_samples(self):
+
+        all_samples = []
+        pbar = my_tqdm(range(len(data)))
+        for i in pbar:
+            pbar.set_postfix({'ram_usage': psutil.virtual_memory().percent})
+            samples = self.datapoint_to_samples(i)
+            if samples:
+                all_samples.extend(samples)
+        all_samples_array = np.array(all_samples)
+        np.save(self.train_sample_npy_path, all_samples_array)
+        self.save()
+
+    # ====================
+    def save(self):
+
+        member_variables = self.__dict__.copy()
+        member_variables['data'] = None
+        with open(self.pickle_path, 'wb') as f:
+            pickle.dump(member_variables, f)
+
+
+    
+    # ====================
     def datapoint_to_samples(self, datapoint_index: int) -> list:
 
         datapoint = self.data[datapoint_index]
         if self.spaces:
-            print(datapoint)
-            print(type(datapoint))
             words = datapoint.split()
-            try:
-                substrs = []
-            except:
-                print('Huh?')
-                quit()
-            for i in range(len(words)):
-                try:
-                    substrs.append(' '.join(words[i:]))
-                except:
-                    print(words[i])
-                    quit()
-            # substrs = [ for i in range(len(words))]
-            substrs = [s for s in substrs
-                       if len(re.sub(rf"[{''.join(self.feature_chars)}]", '', s)) > self.seq_length]
-            samples = []
-            for substr in substrs:
-                this_sample = self.substr_to_sample(substr)
-                if this_sample:
-                    samples.append(this_sample)
-            return samples
+            substrs = [' '.join(words[i:]) for i in range(len(words))]
+            samples = [self.substr_to_sample(substr) for substr in substrs]
+            samples = [s for s in samples if s is not None]
         else:
             raise ValueError('Not implemented yet when spaces=False')
 
@@ -107,12 +140,13 @@ class SampleMaker:
             else:
                 output_chars.append(self.get_int_from_char(this_char))
                 class_list.append(1)
-            while chars[0] in self.feature_chars:
+            while chars and chars[0] in self.feature_chars:
                 this_feature_char = chars.pop(0)
                 class_list[-1] *= self.feature_char_to_prime[this_feature_char]
         assert len(output_chars) == self.seq_length
         assert len(class_list) == self.seq_length
-        return (output_chars, class_list)
+        self.add_output_classes(set(class_list))
+        return (np.array([output_chars, class_list]))
 
     # ====================
     def get_int_from_char(self, char: str) -> int:
@@ -122,10 +156,22 @@ class SampleMaker:
         else:
             return self.char_to_int['<UNK>']
 
+    # ====================
+    def add_output_classes(self, new_classes: set):
 
+        self.output_classes = self.output_classes | new_classes
+
+
+# ====================
 if __name__ == "__main__":
 
     data_path = 'TED_TRAIN.csv'
     data = pd.read_csv(data_path)['all_cleaned'].to_list()
-    sample_maker = SampleMaker(data, capitalisation=True, spaces=True, other_features=list('.,'), seq_length=100)
+    sample_maker = SampleMaker(data,
+                               capitalisation=True,
+                               spaces=True, 
+                               other_features=list('.,'),
+                               seq_length=100,
+                               pickle_path='sample_maker.pickle',
+                               train_sample_npy_path='train_samples.npy')
     print(sample_maker.datapoint_to_samples(0))
