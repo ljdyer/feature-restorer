@@ -55,7 +55,8 @@ class SampleMaker:
     def datapoint_to_samples(self, datapoint: str) -> list:
 
         if self.spaces:
-
+            print(datapoint)
+            print(type(datapoint))
             words = datapoint.split()
             try:
                 substrs = []
