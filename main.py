@@ -8,9 +8,11 @@ Assumptions:
 CLASS_ATTRS_FNAME = 'class_attrs.pickle'
 X_TRAIN_FNAME = 'X_train.pickle'
 Y_TRAIN_FNAME = 'y_train.pickle'
+X_TOKENIZER_FNAME = 'X_tokenizer.pickle'
+INPUT_TOKENIZER_FNAME = 'input_tokenizer.pickle'
+OUTPUT_TOKENIZER_FNAME = ''
 
 
-import sympy
 import pandas as pd
 import numpy as np
 from tqdm.notebook import tqdm as notebook_tqdm
@@ -18,6 +20,9 @@ from tqdm import tqdm as non_notebook_tqdm
 import psutil
 import pickle
 import os
+from keras.preprocessing.text import Tokenizer
+from tensorflow.keras.utils import to_categorical
+
 
 # ====================
 def is_running_from_ipython():
@@ -72,11 +77,10 @@ class SampleMaker:
                 self.feature_chars = self.other_features + [' ']
             else:
                 self.feature_chars = self.other_features
-            self.feature_char_to_prime = {char: sympy.prime(idx+2) for idx, char in enumerate(self.feature_chars)}
-            self.prime_to_feature_char = {p: c for c, p in self.feature_char_to_prime.items()}
             self.class_attrs_path = os.path.join(self.root_folder, CLASS_ATTRS_FNAME)
             self.X_train_path = os.path.join(self.root_folder, X_TRAIN_FNAME)
             self.y_train_path = os.path.join(self.root_folder, Y_TRAIN_FNAME)
+            self.X_tokenizer_path = os.path.join(self.root_folder, X_TOKENIZER_FNAME)
             if not os.path.exists(self.root_folder):
                 os.makedirs(self.root_folder)
             self.save()
@@ -110,7 +114,11 @@ class SampleMaker:
                 X, y = Xy
                 X_train.extend(X)
                 y_train.extend(y)
-        save_pickle(X_train, self.X_train_path)
+        
+        X_tokenizer = Tokenizer(char_level=True)
+        X_train_tokenized = X_tokenizer.fit_on_texts(X)
+        save_pickle(X_tokenizer, self.X_tokenizer_path)
+        save_pickle(X_train_tokenized, self.X_train_path)
         save_pickle(y_train, self.y_train_path)
         self.save()
 
@@ -170,7 +178,8 @@ class SampleMaker:
             # Substring can't begin with a feature char
             return None
         for _ in range(self.seq_length):
-            this_class = [1]
+            this_class = ''
+            feature_chars_encountered = []
             # Get the next letter
             try:
                 this_char = chars.pop(0)
@@ -180,33 +189,22 @@ class SampleMaker:
             # Check for capitalisation
             if self.capitalisation and this_char.isupper():
                 X.append(this_char.lower())
-                this_class.append(2)
+                this_class = 'U' + this_class
             else:
                 X.append(this_char)
             # Check for other features
             while chars and chars[0] in self.feature_chars:
                 this_feature_char = chars.pop(0)
-                this_class.append(self.feature_char_to_prime[this_feature_char])
+                feature_chars_encountered.append(this_feature_char)
             if self.one_of_each:
-                this_class = list(set(this_class))
-            y.append(np.product(this_class))
+                this_class = ''.join([this_class] + [f for f in self.feature_chars if f in feature_chars_encountered])
+            else:
+                raise ValueError('Not implemented yet when one_of_each=False.')
+            y.append(this_class)
         # Encode input and output
         assert len(X) == self.seq_length
         assert len(y) == self.seq_length
         return X, y
-
-    # ====================
-    def get_int_from_char(self, char: str) -> int:
-
-        if char in self.char_to_int:
-            return self.char_to_int[char]
-        else:
-            return self.char_to_int['<UNK>']
-
-    # ====================
-    def encode_chars(self, chars: list) -> list:
-
-        return [self.char_to_int[c] for c in chars]
 
     # ====================
     def encode_classes(self, classes: list):
