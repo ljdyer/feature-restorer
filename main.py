@@ -105,7 +105,7 @@ class SampleMaker:
                 'num_samples': len(X_train),
                 'estimated_num_samples': len(X_train) * (len(pbar) / (pbar.n + 1))
             })
-            Xy = self.datapoint_to_samples(data[i])
+            Xy = self.datapoint_to_Xy(data[i])
             if Xy is not None:
                 X, y = Xy
                 X_train.extend(X)
