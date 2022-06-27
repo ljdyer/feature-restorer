@@ -5,12 +5,9 @@ Assumptions:
 (i.e. "eats, shoots, and leaves" NOT "eats ,shoots ,and leaves"
 """
 
-
-# TODO: save samples as numpy array
-# TODO: use memmap?
-
 CLASS_ATTRS_FNAME = 'class_attrs.pickle'
-TRAIN_SAMPLES_FNAME = 'train_samples.npy'
+X_TRAIN_FNAME = 'X_train.pickle'
+Y_TRAIN_FNAME = 'y_train.pickle'
 
 
 import sympy
@@ -38,18 +35,32 @@ else:
     my_tqdm = non_notebook_tqdm
 
 
+# ====================
+def load_pickle(fp: str):
+
+    with open(fp, 'rb') as f:
+        unpickled = pickle.load(f)
+    return unpickled
+
+
+# ====================
+def save_pickle(data, fp: str):
+
+    with open(fp, 'wb') as f:
+        pickle.dump(data, f)
+
 
 # ====================
 class SampleMaker:
     """
     Required attributes for new instance:
 
-    name: str,
+    root_folder: str,
     capitalisation: bool,
     spaces: bool,
     other_features: list,
     seq_length: int,
-    one_of_each: bool = True
+    one_of_each: bool = True,
     """
 
     # ====================
@@ -63,15 +74,15 @@ class SampleMaker:
                 self.feature_chars = self.other_features
             self.feature_char_to_prime = {char: sympy.prime(idx+2) for idx, char in enumerate(self.feature_chars)}
             self.prime_to_feature_char = {p: c for c, p in self.feature_char_to_prime.items()}
-            self.class_attrs_path = os.path.join(self.name, CLASS_ATTRS_FNAME)
-            self.train_samples_path = os.path.join(self.name, TRAIN_SAMPLES_FNAME)
-            if not os.path.exists(self.name):
-                os.makedirs(self.name)
+            self.class_attrs_path = os.path.join(self.root_folder, CLASS_ATTRS_FNAME)
+            self.X_train_path = os.path.join(self.root_folder, X_TRAIN_FNAME)
+            self.y_train_path = os.path.join(self.root_folder, Y_TRAIN_FNAME)
+            if not os.path.exists(self.root_folder):
+                os.makedirs(self.root_folder)
             self.save()
         elif name_to_load is not None:
             class_attrs_path = os.path.join(name_to_load, CLASS_ATTRS_FNAME)
-            with open(class_attrs_path, 'rb') as f:
-                attrs = pickle.load(f)
+            attrs = load_pickle(class_attrs_path)
             self.__dict__.update(attrs)
         else:
             raise ValueError('You must specify either attrs or load_path.')
@@ -80,44 +91,27 @@ class SampleMaker:
     def save(self):
 
         class_attrs = self.__dict__.copy()
-        with open(self.class_attrs_path, 'wb') as f:
-            pickle.dump(class_attrs, f)
+        save_pickle(class_attrs, self.class_attrs_path)
 
     # ====================
-    def generate_char_maps(self, data):
+    def load_train_data(self, data: list):
 
-        all_chars = set()
-        for d in data:
-            chars = set(d)
-            all_chars = all_chars | chars
-        if self.capitalisation:
-            all_chars = set([c.lower() for c in list(all_chars)])
-        if self.spaces:
-            all_chars = all_chars - {' '}
-        if self.other_features:
-            all_chars = all_chars - set(self.other_features)
-        all_chars = list(sorted(all_chars))
-        all_chars.append('<UNK>')
-        self.char_to_int = {c: i for c, i in zip(all_chars, range(len(all_chars)))}
-        self.int_to_char = {i: c for c, i in self.char_to_int.items()}
-        self.save()
-
-    # ====================
-    def generate_train_samples(self, data: list):
-
-        all_samples = []
+        X_train = []
+        y_train = []
         pbar = my_tqdm(range(len(data)))
         for i in pbar:
             pbar.set_postfix({
                 'ram_usage': psutil.virtual_memory().percent,
-                'num_samples': len(all_samples),
-                'estimated_num_samples': len(all_samples) * (len(pbar) / (pbar.n + 1))
+                'num_samples': len(X_train),
+                'estimated_num_samples': len(X_train) * (len(pbar) / (pbar.n + 1))
             })
-            samples = self.datapoint_to_samples(data[i])
-            if samples:
-                all_samples.extend(samples)
-        all_samples_array = np.array(all_samples)
-        np.save(self.train_samples_path, all_samples_array)
+            Xy = self.datapoint_to_samples(data[i])
+            if Xy is not None:
+                X, y = Xy
+                X_train.extend(X)
+                y_train.extend(y)
+        save_pickle(X_train, self.X_train_path)
+        save_pickle(y_train, self.y_train_path)
         self.save()
 
     # ====================
@@ -140,31 +134,37 @@ class SampleMaker:
                 raise ValueError('Not implemented yet when one_of_each=False.')
         return ''.join(output_list)
 
-    # ====================
-    def get_train_sample(self, n: int):
+    # # ====================
+    # def get_train_sample(self, n: int):
 
-        train_samples = np.load(self.train_samples_path)
-        x = train_samples[n]
-        del train_samples
-        return x    
+    #     train_samples = np.load(self.train_samples_path)
+    #     x = train_samples[n]
+    #     del train_samples
+    #     return x    
 
     # ====================
-    def datapoint_to_samples(self, datapoint: str) -> list:
+    def datapoint_to_Xy(self, datapoint: str) -> list:
 
         if self.spaces:
+            X = []
+            y = []
             words = datapoint.split()
             substrs = [' '.join(words[i:]) for i in range(len(words))]
-            samples = [self.substr_to_sample(substr) for substr in substrs]
-            samples = [s for s in samples if s is not None]
+            for substr in substrs:
+                Xy = self.substr_to_Xy(substr)
+                if Xy is not None:
+                    X_, y_ = Xy
+                    X.append(X_)
+                    y.append(y_)
         else:
             raise ValueError('Not implemented yet when spaces=False.')
-        return samples
+        return X, y
 
     # ====================
-    def substr_to_sample(self, substr: str) -> tuple:
+    def substr_to_Xy(self, substr: str) -> tuple:
 
-        output_chars = []
-        class_list = []
+        X = []
+        y = []
         chars = list(substr)
         if chars[0] in self.feature_chars:
             # Substring can't begin with a feature char
@@ -179,23 +179,21 @@ class SampleMaker:
                 return None
             # Check for capitalisation
             if self.capitalisation and this_char.isupper():
-                output_chars.append(this_char.lower())
+                X.append(this_char.lower())
                 this_class.append(2)
             else:
-                output_chars.append(this_char)
+                X.append(this_char)
             # Check for other features
             while chars and chars[0] in self.feature_chars:
                 this_feature_char = chars.pop(0)
                 this_class.append(self.feature_char_to_prime[this_feature_char])
             if self.one_of_each:
                 this_class = list(set(this_class))
-            class_list.append(np.product(this_class))
+            y.append(np.product(this_class))
         # Encode input and output
-        output_ints = self.encode_chars(output_chars)
-        output_classes = self.encode_classes(class_list)
-        assert len(output_ints) == self.seq_length
-        assert len(output_classes) == self.seq_length
-        return (np.array([output_ints, output_classes]))
+        assert len(X) == self.seq_length
+        assert len(y) == self.seq_length
+        return X, y
 
     # ====================
     def get_int_from_char(self, char: str) -> int:
@@ -224,7 +222,6 @@ class SampleMaker:
         # Encode
         return [self.class_to_int[c] for c in classes]
 
-
 # ====================
 if __name__ == "__main__":
 
@@ -240,5 +237,5 @@ if __name__ == "__main__":
     }
     sample_maker = SampleMaker(attrs)
     sample_maker.generate_char_maps(data)
-    sample_maker.generate_train_samples(data)
+    sample_maker.load_train_data(data)
     print(sample_maker.sample_to_output(sample_maker.get_train_sample(3)))
