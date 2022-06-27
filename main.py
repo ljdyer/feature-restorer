@@ -6,11 +6,14 @@ Assumptions:
 """
 
 CLASS_ATTRS_FNAME = 'class_attrs.pickle'
-X_TRAIN_FNAME = 'X_train.pickle'
-Y_TRAIN_FNAME = 'y_train.pickle'
-X_TOKENIZER_FNAME = 'X_tokenizer.pickle'
-INPUT_TOKENIZER_FNAME = 'input_tokenizer.pickle'
-OUTPUT_TOKENIZER_FNAME = ''
+
+ASSETS = {
+    'CLASS_ATTRS': CLASS_ATTRS_FNAME,
+    'X_TRAIN':  'X_train.pickle',
+    'Y_TRAIN': 'y_train.pickle',
+    'X_TOKENIZER': 'X_tokenizer.pickle',
+    'Y_TOKENIZER': 'y_tokenizer.pickle',
+}
 
 
 import pandas as pd
@@ -69,7 +72,7 @@ class SampleMaker:
     """
 
     # ====================
-    def __init__(self, attrs: dict = None, name_to_load: str = None):
+    def __init__(self, attrs: dict = None, load_folder: str = None):
 
         if attrs is not None:
             self.__dict__.update(attrs)
@@ -77,25 +80,39 @@ class SampleMaker:
                 self.feature_chars = self.other_features + [' ']
             else:
                 self.feature_chars = self.other_features
-            self.class_attrs_path = os.path.join(self.root_folder, CLASS_ATTRS_FNAME)
-            self.X_train_path = os.path.join(self.root_folder, X_TRAIN_FNAME)
-            self.y_train_path = os.path.join(self.root_folder, Y_TRAIN_FNAME)
-            self.X_tokenizer_path = os.path.join(self.root_folder, X_TOKENIZER_FNAME)
+            self.assets = ASSETS
             if not os.path.exists(self.root_folder):
                 os.makedirs(self.root_folder)
             self.save()
-        elif name_to_load is not None:
-            class_attrs_path = os.path.join(name_to_load, CLASS_ATTRS_FNAME)
+        elif load_folder is not None:
+            class_attrs_path = os.path.join(load_folder, CLASS_ATTRS_FNAME)
             attrs = load_pickle(class_attrs_path)
             self.__dict__.update(attrs)
         else:
             raise ValueError('You must specify either attrs or load_path.')
 
     # ====================
+    def asset_path(self, asset_name: str):
+
+        return os.path.join(self.root_folder, self.assets[asset_name])
+
+    # ====================
+    def get_asset(self, asset_name: str):
+
+        asset_path = self.asset_path(asset_name)
+        return load_pickle(asset_path)
+
+    # ====================
+    def save_asset(self, data, asset_name: str):
+
+        asset_path = self.asset_path(asset_name)
+        save_pickle(data, asset_path)
+
+    # ====================
     def save(self):
 
         class_attrs = self.__dict__.copy()
-        save_pickle(class_attrs, self.class_attrs_path)
+        self.save_asset(class_attrs, 'CLASS_ATTRS')
 
     # ====================
     def load_train_data(self, data: list):
@@ -118,9 +135,13 @@ class SampleMaker:
         X_tokenizer = Tokenizer(char_level=True)
         X_tokenizer.fit_on_texts(X)
         X_train_tokenized = X_tokenizer.texts_to_sequences(X)
-        save_pickle(X_tokenizer, self.X_tokenizer_path)
-        save_pickle(X_train_tokenized, self.X_train_path)
-        save_pickle(y_train, self.y_train_path)
+        self.save_asset(X_tokenizer, 'X_TOKENIZER')
+        self.save_asset(X_train_tokenized, 'X_TRAIN')
+        y_tokenizer = Tokenizer()
+        y_tokenizer.fit_on_texts(y)
+        y_train_tokenized = y_tokenizer.texts_to_sequences(y)
+        self.save_asset(y_tokenizer, 'Y_TOKENIZER')
+        self.save_asset(y_train_tokenized, 'Y_TRAIN')
         self.save()
 
     # ====================
@@ -142,14 +163,6 @@ class SampleMaker:
             else:
                 raise ValueError('Not implemented yet when one_of_each=False.')
         return ''.join(output_list)
-
-    # # ====================
-    # def get_train_sample(self, n: int):
-
-    #     train_samples = np.load(self.train_samples_path)
-    #     x = train_samples[n]
-    #     del train_samples
-    #     return x    
 
     # ====================
     def datapoint_to_Xy(self, datapoint: str) -> list:
@@ -206,35 +219,3 @@ class SampleMaker:
         assert len(X) == self.seq_length
         assert len(y) == self.seq_length
         return X, y
-
-    # ====================
-    def encode_classes(self, classes: list):
-
-        # Add any new classes to the list of classes
-        if 'output_classes' not in self.__dict__:
-            self.output_classes = []
-        new_classes = set(list([c for c in classes if c not in self.output_classes]))
-        self.output_classes.extend(new_classes)
-        # Regenerate encoder dictionaries
-        self.class_to_int = {c: i for c, i in zip(self.output_classes, range(len(self.output_classes)))}
-        self.int_to_class = {i: c for c, i in self.class_to_int.items()}
-        # Encode
-        return [self.class_to_int[c] for c in classes]
-
-# ====================
-if __name__ == "__main__":
-
-    data_path = 'TED_TRAIN.csv'
-    data = pd.read_csv(data_path)['all_cleaned'].to_list()
-    attrs = {
-        'name': 'TED_TALKS_2',
-        'capitalisation': True,
-        'spaces': True,
-        'other_features': list('.,'),
-        'seq_length': 200,
-        'one_of_each': True
-    }
-    sample_maker = SampleMaker(attrs)
-    sample_maker.generate_char_maps(data)
-    sample_maker.load_train_data(data)
-    print(sample_maker.sample_to_output(sample_maker.get_train_sample(3)))
