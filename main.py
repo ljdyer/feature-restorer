@@ -116,7 +116,8 @@ class SampleMaker:
                 y_train.extend(y)
         
         X_tokenizer = Tokenizer(char_level=True)
-        X_train_tokenized = X_tokenizer.fit_on_texts(X)
+        X_tokenizer.fit_on_texts(X)
+        X_train_tokenized = X_tokenizer.texts_to_sequences(X)
         save_pickle(X_tokenizer, self.X_tokenizer_path)
         save_pickle(X_train_tokenized, self.X_train_path)
         save_pickle(y_train, self.y_train_path)
