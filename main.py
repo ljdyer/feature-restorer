@@ -60,7 +60,7 @@ def save_pickle(data, fp: str):
 
 
 # ====================
-class SampleMaker:
+class FeatureRestorer:
     """
     Required attributes for new instance:
 
@@ -102,6 +102,12 @@ class SampleMaker:
 
         asset_path = self.asset_path(asset_name)
         return load_pickle(asset_path)
+
+    # ====================
+    def load_asset(self, asset_name: str):
+
+        self.loaded_assets[asset_name] = self.get_asset(asset_name)
+        return self.loaded_assets[asset_name]
 
     # ====================
     def save_asset(self, data, asset_name: str):
@@ -151,13 +157,35 @@ class SampleMaker:
         X_tokenizer = self.get_asset('X_TOKENIZER')
         X_decoded = X_tokenizer.sequences_to_texts([X])[0].replace(' ', '')
         y_tokenizer = self.get_asset('Y_TOKENIZER')
-        y_index_word = json.loads(y_tokenizer.get_config()['index_word'])
-        print(y_index_word)
-        y_decoded = [y_index_word[str(y_)] for y_ in y]
-        print(y_decoded)
+        y_decoded = self.decode_class_list(y_tokenizer, y)
         output_parts = [self.char_and_class_to_output_str(X_, y_) for X_, y_ in zip(X_decoded, y_decoded)]
         output = ''.join(output_parts)
         return output
+    
+    # ====================
+    def preview_Xy(self, X: list, y: list):
+
+        X_tokenizer = self.get_asset('X_TOKENIZER')
+        X = X_tokenizer.sequences_to_texts([X])[0].replace(' ', '')
+        y_tokenizer = self.get_asset('Y_TOKENIZER')
+        y = self.decode_class_list(y_tokenizer, y)
+        X_preview = ''
+        y_preview = ''
+        assert len(X) > 10
+        for i in range(len(X)):
+            reqd_length = max(len(X[i]), len(y[i])) + 1
+            X_preview = X_preview + (str(X[i])).ljust(reqd_length)
+            y_preview = y_preview + (str(y[i])).ljust(reqd_length)
+        print(X_preview)
+        print(y_preview)
+
+    # ====================
+    @staticmethod
+    def decode_class_list(self, tokenizer, encoded: list) -> list:
+
+        index_word = json.loads(tokenizer.get_config()['index_word'])
+        decoded = [index_word[str(x)] for x in encoded]
+        return decoded
         
     # ====================
     @staticmethod
