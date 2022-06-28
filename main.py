@@ -156,6 +156,7 @@ class SampleMaker:
         return output
         
     # ====================
+    @staticmethod
     def char_and_class_to_output_str(X_: str, y: str) -> str:
 
         if y[0] == 'u':
