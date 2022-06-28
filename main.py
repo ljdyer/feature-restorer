@@ -152,7 +152,9 @@ class SampleMaker:
         y_tokenizer = self.get_asset('Y_TOKENIZER')
         y_index_word = y_tokenizer.get_config()['index_word']
         y_decoded = [y_index_word[y_] for y_ in y]
-        output = [self.char_and_class_to_output_str(X_, y_) for X_, y_ in zip(X_decoded, y_decoded)]
+        print(y_decoded)
+        output_parts = [self.char_and_class_to_output_str(X_, y_) for X_, y_ in zip(X_decoded, y_decoded)]
+        output = ''.join(output_parts)
         return output
         
     # ====================
