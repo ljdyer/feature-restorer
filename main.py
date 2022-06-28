@@ -159,7 +159,7 @@ class SampleMaker:
     @staticmethod
     def char_and_class_to_output_str(X_: str, y_: str) -> str:
 
-        if y[0] == 'u':
+        if y_[0] == 'u':
             X_ = X_.upper()
             y_ = y_[1:]
         return X_ + y_
