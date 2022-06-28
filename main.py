@@ -9,8 +9,7 @@ CLASS_ATTRS_FNAME = 'class_attrs.pickle'
 
 ASSETS = {
     'CLASS_ATTRS': CLASS_ATTRS_FNAME,
-    'X_TRAIN':  'X_train.pickle',
-    'Y_TRAIN': 'y_train.pickle',
+    'TRAIN_DATA': 'train_data.npy',
     'X_TOKENIZER': 'X_tokenizer.pickle',
     'Y_TOKENIZER': 'y_tokenizer.pickle',
 }
@@ -51,12 +50,24 @@ def load_pickle(fp: str):
         unpickled = pickle.load(f)
     return unpickled
 
-
 # ====================
 def save_pickle(data, fp: str):
 
     with open(fp, 'wb') as f:
         pickle.dump(data, f)
+
+# ====================
+def load_npy(fp: str):
+
+    with open(fp, 'rb') as f:
+        unpickled = np.load(f)
+    return unpickled
+
+# ====================
+def save_npy(data, fp: str):
+
+    with open(fp, 'wb') as f:
+        np.save(data, f)
 
 
 # ====================
@@ -101,19 +112,25 @@ class FeatureRestorer:
     def get_asset(self, asset_name: str):
 
         asset_path = self.asset_path(asset_name)
-        return load_pickle(asset_path)
-
-    # ====================
-    def load_asset(self, asset_name: str):
-
-        self.loaded_assets[asset_name] = self.get_asset(asset_name)
-        return self.loaded_assets[asset_name]
+        _, fext = os.path.splitext(asset_path):
+        if fext == '.pickle':
+            return load_pickle(asset_path)
+        elif fext == '.npy':
+            return load_npy(asset_path)
+        else:
+            raise RuntimeError('Invalid file ext!')
 
     # ====================
     def save_asset(self, data, asset_name: str):
 
         asset_path = self.asset_path(asset_name)
-        save_pickle(data, asset_path)
+        _, fext = os.path.splitext(asset_path):
+        if fext == '.pickle':
+            save_pickle(data, asset_path)
+        elif fext == '.npy':
+            save_npy(data, asset_path)
+        else:
+            raise RuntimeError('Invalid file ext!')
 
     # ====================
     def save(self):
@@ -143,12 +160,14 @@ class FeatureRestorer:
         X_tokenizer.fit_on_texts(X)
         X_train_tokenized = X_tokenizer.texts_to_sequences(X)
         self.save_asset(X_tokenizer, 'X_TOKENIZER')
-        self.save_asset(X_train_tokenized, 'X_TRAIN')
         y_tokenizer = Tokenizer()
         y_tokenizer.fit_on_texts(y)
         y_train_tokenized = y_tokenizer.texts_to_sequences(y)
         self.save_asset(y_tokenizer, 'Y_TOKENIZER')
-        self.save_asset(y_train_tokenized, 'Y_TRAIN')
+        all_train_data = []
+        while X_train_tokenized:
+            all_train_data.append([X_train_tokenized.pop(0), y_train_tokenized.pop(0)])
+        self.save_asset(all_train_data, 'X_TRAIN')
         self.save()
 
     # ====================
