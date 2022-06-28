@@ -112,7 +112,7 @@ class FeatureRestorer:
     def get_asset(self, asset_name: str):
 
         asset_path = self.asset_path(asset_name)
-        _, fext = os.path.splitext(asset_path):
+        _, fext = os.path.splitext(asset_path)
         if fext == '.pickle':
             return load_pickle(asset_path)
         elif fext == '.npy':
@@ -124,7 +124,7 @@ class FeatureRestorer:
     def save_asset(self, data, asset_name: str):
 
         asset_path = self.asset_path(asset_name)
-        _, fext = os.path.splitext(asset_path):
+        _, fext = os.path.splitext(asset_path)
         if fext == '.pickle':
             save_pickle(data, asset_path)
         elif fext == '.npy':
