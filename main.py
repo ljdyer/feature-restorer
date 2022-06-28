@@ -167,7 +167,7 @@ class FeatureRestorer:
         all_train_data = []
         while X_train_tokenized:
             all_train_data.append([X_train_tokenized.pop(0), y_train_tokenized.pop(0)])
-        self.save_asset(all_train_data, 'X_TRAIN')
+        self.save_asset(all_train_data, 'TRAIN_DATA')
         self.save()
 
     # ====================
