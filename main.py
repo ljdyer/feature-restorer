@@ -67,7 +67,7 @@ def load_npy(fp: str):
 def save_npy(data, fp: str):
 
     with open(fp, 'wb') as f:
-        np.save(data, f)
+        np.save(f, data)
 
 
 # ====================
@@ -167,6 +167,7 @@ class FeatureRestorer:
         all_train_data = []
         while X_train_tokenized:
             all_train_data.append([X_train_tokenized.pop(0), y_train_tokenized.pop(0)])
+        all_train_data = np.array(all_train_data)
         self.save_asset(all_train_data, 'TRAIN_DATA')
         self.save()
 
