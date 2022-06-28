@@ -148,7 +148,7 @@ class SampleMaker:
     def Xy_to_output(self, X: list, y: list) -> str:
 
         X_tokenizer = self.get_asset('X_TOKENIZER')
-        X_decoded = X_tokenizer.sequences_to_text([X])[0].replace(' ', '')
+        X_decoded = X_tokenizer.sequences_to_texts([X])[0].replace(' ', '')
         y_tokenizer = self.get_asset('Y_TOKENIZER')
         y_index_word = y_tokenizer.get_config()['index_word']
         y_decoded = [y_index_word[y_] for y_ in y]
