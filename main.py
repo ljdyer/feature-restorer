@@ -16,15 +16,16 @@ ASSETS = {
 }
 
 
-import pandas as pd
-import numpy as np
-from tqdm.notebook import tqdm as notebook_tqdm
-from tqdm import tqdm as non_notebook_tqdm
-import psutil
-import pickle
+import json
 import os
+import pickle
+
+import numpy as np
+import psutil
 from keras.preprocessing.text import Tokenizer
 from tensorflow.keras.utils import to_categorical
+from tqdm import tqdm as non_notebook_tqdm
+from tqdm.notebook import tqdm as notebook_tqdm
 
 
 # ====================
@@ -150,7 +151,7 @@ class SampleMaker:
         X_tokenizer = self.get_asset('X_TOKENIZER')
         X_decoded = X_tokenizer.sequences_to_texts([X])[0].replace(' ', '')
         y_tokenizer = self.get_asset('Y_TOKENIZER')
-        y_index_word = y_tokenizer.get_config()['index_word']
+        y_index_word = json.loads(y_tokenizer.get_config()['index_word'])
         print(y_index_word)
         y_decoded = [y_index_word[str(y_)] for y_ in y]
         print(y_decoded)
