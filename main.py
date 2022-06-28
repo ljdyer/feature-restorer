@@ -158,11 +158,12 @@ class FeatureRestorer:
         
         X_tokenizer = Tokenizer(char_level=True)
         X_tokenizer.fit_on_texts(X)
-        
+        self.num_x_categories = len(X_tokenizer.word_index)
         X_train_tokenized = X_tokenizer.texts_to_sequences(X)
         self.save_asset(X_tokenizer, 'X_TOKENIZER')
         y_tokenizer = Tokenizer()
         y_tokenizer.fit_on_texts(y)
+        self.num_y_categories = len(y_tokenizer.word_index)
         y_train_tokenized = y_tokenizer.texts_to_sequences(y)
         self.save_asset(y_tokenizer, 'Y_TOKENIZER')
         all_train_data = []
