@@ -158,6 +158,7 @@ class FeatureRestorer:
         
         X_tokenizer = Tokenizer(char_level=True)
         X_tokenizer.fit_on_texts(X)
+        
         X_train_tokenized = X_tokenizer.texts_to_sequences(X)
         self.save_asset(X_tokenizer, 'X_TOKENIZER')
         y_tokenizer = Tokenizer()
@@ -198,6 +199,29 @@ class FeatureRestorer:
             y_preview = y_preview + (str(y[i])).ljust(reqd_length)
         print(X_preview)
         print(y_preview)
+
+    # ====================
+    def onehot_encode_batch(self, sample_batch: np.ndarray) -> np.ndarray:
+        """Convert a batch of samples to a 3d numpy array"""
+
+        X_seqs = []
+        y_seqs = []
+        for X, y in sample_batch:
+            X = to_categorical(X, self.num_X_categories)
+            y = to_categorical(y, self.num_y_categories)
+            X_seqs.append(X)
+            y_seqs.append(y)
+        return (np.concatenate(X_seqs), np.concatenate(y_seqs))
+
+    # ====================
+    def data_loader(self, samples: np.ndarray, batch_size: int):
+        """Iterator function to create batches"""
+
+        while True:
+            for idx in range(0, len(samples) - batch_size, batch_size):
+                sample_batch = samples[idx: idx + batch_size]
+                X, y = self.onehot_encode_batch(sample_batch)
+                yield(X, y)
 
     # ====================
     @staticmethod
