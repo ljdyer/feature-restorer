@@ -181,7 +181,7 @@ class FeatureRestorer:
 
     # ====================
     @staticmethod
-    def decode_class_list(self, tokenizer, encoded: list) -> list:
+    def decode_class_list(tokenizer, encoded: list) -> list:
 
         index_word = json.loads(tokenizer.get_config()['index_word'])
         decoded = [index_word[str(x)] for x in encoded]
