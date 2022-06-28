@@ -145,24 +145,23 @@ class SampleMaker:
         self.save()
 
     # ====================
-    def sample_to_output(self, sample: np.ndarray) -> str:
+    def Xy_to_output(self, X: list, y: list) -> str:
 
-        char_encoding = sample[0]
-        class_list = sample[1]
-        output_list = []
-        for idx, (char_encoded, class_encoded) in enumerate(list(zip(char_encoding, class_list))):
-            char = self.int_to_char[char_encoded]
-            class_ = self.int_to_class[class_encoded]
-            if self.one_of_each:
-                if class_ % 2 == 0:
-                    char = char.upper()
-                for prime in sorted(self.prime_to_feature_char.keys()):
-                    if class_ % prime == 0:
-                        char = char + self.prime_to_feature_char[prime]
-                output_list.append(char)
-            else:
-                raise ValueError('Not implemented yet when one_of_each=False.')
-        return ''.join(output_list)
+        X_tokenizer = self.get_asset('X_TOKENIZER')
+        X_decoded = X_tokenizer.sequences_to_text([X])[0].replace(' ', '')
+        y_tokenizer = self.get_asset('Y_TOKENIZER')
+        y_index_word = y_tokenizer.get_config()['index_word']
+        y_decoded = [y_index_word[y_] for y_ in y]
+        output = [self.char_and_class_to_output_str(X_, y_) for X_, y_ in zip(X_decoded, y_decoded)]
+        return output
+        
+    # ====================
+    def char_and_class_to_output_str(X_: str, y: str) -> str:
+
+        if y[0] == 'u':
+            X_ = X_.upper()
+            y_ = y_[1:]
+        return X_ + y_
 
     # ====================
     def datapoint_to_Xy(self, datapoint: str) -> list:
