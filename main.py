@@ -5,6 +5,20 @@ Assumptions:
 (i.e. "eats, shoots, and leaves" NOT "eats ,shoots ,and leaves"
 """
 
+import json
+import os
+
+import numpy as np
+import psutil
+from keras.layers import LSTM, Bidirectional, Dense, TimeDistributed
+from keras.models import Sequential
+from keras.preprocessing.text import Tokenizer
+from tensorflow.keras.utils import to_categorical
+from tqdm import tqdm as non_notebook_tqdm
+from tqdm.notebook import tqdm as notebook_tqdm
+
+from helper import is_running_from_ipython, load_file, save_file
+
 CLASS_ATTRS_FNAME = 'class_attrs.pickle'
 
 ASSETS = {
@@ -14,60 +28,11 @@ ASSETS = {
     'Y_TOKENIZER': 'y_tokenizer.pickle',
 }
 
-
-import json
-import os
-import pickle
-
-import numpy as np
-import psutil
-from keras.preprocessing.text import Tokenizer
-from tensorflow.keras.utils import to_categorical
-from tqdm import tqdm as non_notebook_tqdm
-from tqdm.notebook import tqdm as notebook_tqdm
-
-
-# ====================
-def is_running_from_ipython():
-    try:
-        from IPython import get_ipython
-        return True
-    except ModuleNotFoundError:
-        return False
-    
-
 # ====================
 if is_running_from_ipython():
     my_tqdm = notebook_tqdm
 else:
     my_tqdm = non_notebook_tqdm
-
-
-# ====================
-def load_pickle(fp: str):
-
-    with open(fp, 'rb') as f:
-        unpickled = pickle.load(f)
-    return unpickled
-
-# ====================
-def save_pickle(data, fp: str):
-
-    with open(fp, 'wb') as f:
-        pickle.dump(data, f)
-
-# ====================
-def load_npy(fp: str):
-
-    with open(fp, 'rb') as f:
-        unpickled = np.load(f)
-    return unpickled
-
-# ====================
-def save_npy(data, fp: str):
-
-    with open(fp, 'wb') as f:
-        np.save(f, data)
 
 
 # ====================
@@ -98,7 +63,7 @@ class FeatureRestorer:
             self.save()
         elif load_folder is not None:
             class_attrs_path = os.path.join(load_folder, CLASS_ATTRS_FNAME)
-            attrs = load_pickle(class_attrs_path)
+            attrs = load_file(class_attrs_path)
             self.__dict__.update(attrs)
         else:
             raise ValueError('You must specify either attrs or load_path.')
@@ -112,25 +77,13 @@ class FeatureRestorer:
     def get_asset(self, asset_name: str):
 
         asset_path = self.asset_path(asset_name)
-        _, fext = os.path.splitext(asset_path)
-        if fext == '.pickle':
-            return load_pickle(asset_path)
-        elif fext == '.npy':
-            return load_npy(asset_path)
-        else:
-            raise RuntimeError('Invalid file ext!')
+        return load_file(asset_path)
 
     # ====================
     def save_asset(self, data, asset_name: str):
 
         asset_path = self.asset_path(asset_name)
-        _, fext = os.path.splitext(asset_path)
-        if fext == '.pickle':
-            save_pickle(data, asset_path)
-        elif fext == '.npy':
-            save_npy(data, asset_path)
-        else:
-            raise RuntimeError('Invalid file ext!')
+        save_file(data, asset_path)
 
     # ====================
     def save(self):
@@ -146,19 +99,20 @@ class FeatureRestorer:
         pbar = my_tqdm(range(len(data)))
         for i in pbar:
             pbar.set_postfix({
-                'ram_usage': psutil.virtual_memory().percent,
+                'ram_usage': f"{psutil.virtual_memory().percent}%",
                 'num_samples': len(X_train),
-                'estimated_num_samples': len(X_train) * (len(pbar) / (pbar.n + 1))
+                'estimated_num_samples':
+                    len(X_train) * (len(pbar) / (pbar.n + 1))
             })
             Xy = self.datapoint_to_Xy(data[i])
             if Xy is not None:
                 X, y = Xy
                 X_train.extend(X)
                 y_train.extend(y)
-        
+
         X_tokenizer = Tokenizer(char_level=True)
         X_tokenizer.fit_on_texts(X)
-        self.num_x_categories = len(X_tokenizer.word_index)
+        self.num_X_categories = len(X_tokenizer.word_index)
         X_train_tokenized = X_tokenizer.texts_to_sequences(X)
         self.save_asset(X_tokenizer, 'X_TOKENIZER')
         y_tokenizer = Tokenizer()
@@ -167,9 +121,13 @@ class FeatureRestorer:
         y_train_tokenized = y_tokenizer.texts_to_sequences(y)
         self.save_asset(y_tokenizer, 'Y_TOKENIZER')
         all_train_data = []
+        print(len(X_train_tokenized))
+        print(len(y_train_tokenized))
         while X_train_tokenized:
-            all_train_data.append([X_train_tokenized.pop(0), y_train_tokenized.pop(0)])
+            all_train_data.append([X_train_tokenized.pop(0),
+                                   y_train_tokenized.pop(0)])
         all_train_data = np.array(all_train_data)
+        print(all_train_data.shape)
         self.save_asset(all_train_data, 'TRAIN_DATA')
         self.save()
 
@@ -180,10 +138,11 @@ class FeatureRestorer:
         X_decoded = X_tokenizer.sequences_to_texts([X])[0].replace(' ', '')
         y_tokenizer = self.get_asset('Y_TOKENIZER')
         y_decoded = self.decode_class_list(y_tokenizer, y)
-        output_parts = [self.char_and_class_to_output_str(X_, y_) for X_, y_ in zip(X_decoded, y_decoded)]
+        output_parts = [self.char_and_class_to_output_str(X_, y_)
+                        for X_, y_ in zip(X_decoded, y_decoded)]
         output = ''.join(output_parts)
         return output
-    
+
     # ====================
     def preview_Xy(self, X: list, y: list):
 
@@ -231,7 +190,7 @@ class FeatureRestorer:
         index_word = json.loads(tokenizer.get_config()['index_word'])
         decoded = [index_word[str(x)] for x in encoded]
         return decoded
-        
+
     # ====================
     @staticmethod
     def char_and_class_to_output_str(X_: str, y_: str) -> str:
@@ -288,7 +247,11 @@ class FeatureRestorer:
                 this_feature_char = chars.pop(0)
                 feature_chars_encountered.append(this_feature_char)
             if self.one_of_each:
-                this_class = ''.join([this_class] + [f for f in self.feature_chars if f in feature_chars_encountered])
+                this_class = ''.join(
+                        [this_class] +
+                        [f for f in self.feature_chars
+                         if f in feature_chars_encountered]
+                    )
             else:
                 raise ValueError('Not implemented yet when one_of_each=False.')
             y.append(this_class)
@@ -296,3 +259,23 @@ class FeatureRestorer:
         assert len(X) == self.seq_length
         assert len(y) == self.seq_length
         return X, y
+
+    # ====================
+    def create_model(self, units: int, dropout: float, recur_dropout: float):
+
+        model = Sequential()
+        model.add(Bidirectional(
+                    LSTM(
+                        units,
+                        return_sequences=True,
+                        dropout=dropout,
+                        recurrent_dropout=recur_dropout
+                    ),
+                    input_shape=(self.seq_length, self.num_x_categories)
+                ))
+        model.add(TimeDistributed(Dense(self.num_x_categories,
+                                        activation='softmax')))
+        model.compile(loss='categorical_crossentropy',
+                      optimizer='adam',
+                      metrics=['accuracy'])
+        return model
