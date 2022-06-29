@@ -110,6 +110,7 @@ class FeatureRestorer:
                 X_train.extend(X)
                 y_train.extend(y)
 
+        print(len(X_train))
         X_tokenizer = Tokenizer(char_level=True)
         X_tokenizer.fit_on_texts(X)
         self.num_X_categories = len(X_tokenizer.word_index)
