@@ -110,26 +110,18 @@ class FeatureRestorer:
                 X_train.extend(X)
                 y_train.extend(y)
 
-        self.X_train = X_train
-        self.y_train = y_train
-        # X_tok = self.tokenize('X_TOKENIZER', X, char_level=True)
-        # y_tok = self.tokenize('y_TOKENIZER', y, char_level=False)
-
-
-        # self.y_train = y_train
-        # print(len(X_train))
-        # X_tokenized = tokenize('X_tokenizer', X, char_level=True)
-        # y_tokenized = tokenize('Y_tokenizer', y, char_level=False)
-        # all_train_data = []
-        # print(len(X_tokenized))
-        # print(len(y_tokenized))
-        # while X_tokenized:
-        #     all_train_data.append([X_tokenized.pop(0),
-        #                            y_tokenized.pop(0)])
-        # all_train_data = np.array(all_train_data)
-        # print(all_train_data.shape)
-        # self.save_asset(all_train_data, 'TRAIN_DATA')
-        # self.save()
+        assert len(X_train) == len(y_train)
+        num_samples = len(X_train)
+        X_tokenized = self.tokenize('X_TOKENIZER', X, char_level=True)
+        y_tokenized = self.tokenize('y_TOKENIZER', y, char_level=False)
+        all_train_data = []
+        while X_tokenized:
+            all_train_data.append([X_tokenized.pop(0),
+                                   y_tokenized.pop(0)])
+        all_train_data = np.array(all_train_data)
+        print(all_train_data.shape)
+        self.save_asset(all_train_data, 'TRAIN_DATA')
+        self.save()
 
     # ====================
     def tokenize(self, tokenizer_name: str, data: list, char_level: bool):
