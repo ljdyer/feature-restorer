@@ -110,27 +110,30 @@ class FeatureRestorer:
                 X_train.extend(X)
                 y_train.extend(y)
 
+        self.X_train = X_train
+        self.y_train = y_train
         print(len(X_train))
-        X_tokenizer = Tokenizer(char_level=True)
-        X_tokenizer.fit_on_texts(X)
-        self.num_X_categories = len(X_tokenizer.word_index)
-        X_train_tokenized = X_tokenizer.texts_to_sequences(X)
-        self.save_asset(X_tokenizer, 'X_TOKENIZER')
-        y_tokenizer = Tokenizer()
-        y_tokenizer.fit_on_texts(y)
-        self.num_y_categories = len(y_tokenizer.word_index)
-        y_train_tokenized = y_tokenizer.texts_to_sequences(y)
-        self.save_asset(y_tokenizer, 'Y_TOKENIZER')
-        all_train_data = []
-        print(len(X_train_tokenized))
-        print(len(y_train_tokenized))
-        while X_train_tokenized:
-            all_train_data.append([X_train_tokenized.pop(0),
-                                   y_train_tokenized.pop(0)])
-        all_train_data = np.array(all_train_data)
-        print(all_train_data.shape)
-        self.save_asset(all_train_data, 'TRAIN_DATA')
-        self.save()
+        # X_tokenized = tokenize('X_tokenizer', X, char_level=True)
+        # y_tokenized = tokenize('Y_tokenizer', y, char_level=False)
+        # all_train_data = []
+        # print(len(X_tokenized))
+        # print(len(y_tokenized))
+        # while X_tokenized:
+        #     all_train_data.append([X_tokenized.pop(0),
+        #                            y_tokenized.pop(0)])
+        # all_train_data = np.array(all_train_data)
+        # print(all_train_data.shape)
+        # self.save_asset(all_train_data, 'TRAIN_DATA')
+        # self.save()
+
+    # ====================
+    def tokenize(self, tokenizer_name: str, data: list, char_level: bool):
+
+        tokenizer = Tokenizer(char_level=char_level)
+        tokenizer.fit_on_texts(data)
+        tokenized = tokenizer.texts_to_sequences(data)
+        self.save_asset(tokenizer, tokenizer_name)
+        return tokenized
 
     # ====================
     def Xy_to_output(self, X: list, y: list) -> str:
