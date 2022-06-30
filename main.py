@@ -119,6 +119,7 @@ class FeatureRestorer:
         while X_tokenized:
             all_train_data.append([X_tokenized.pop(0),
                                    y_tokenized.pop(0)])
+        print(len(all_train_data))
         assert len(all_train_data) == num_samples
         self.train_data_list = all_train_data.copy()
         all_train_data = np.array(all_train_data)
