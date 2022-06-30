@@ -115,6 +115,8 @@ class FeatureRestorer:
         print(num_samples)
         X_tokenized = self.tokenize('X_TOKENIZER', X, char_level=True)
         y_tokenized = self.tokenize('Y_TOKENIZER', y, char_level=False)
+        print(len(X_tokenized))
+        print(len(y_tokenized))
         all_train_data = []
         while X_tokenized:
             all_train_data.append([X_tokenized.pop(0),
