@@ -113,7 +113,7 @@ class FeatureRestorer:
         assert len(X_train) == len(y_train)
         num_samples = len(X_train)
         X_tokenized = self.tokenize('X_TOKENIZER', X, char_level=True)
-        y_tokenized = self.tokenize('y_TOKENIZER', y, char_level=False)
+        y_tokenized = self.tokenize('Y_TOKENIZER', y, char_level=False)
         all_train_data = []
         while X_tokenized:
             all_train_data.append([X_tokenized.pop(0),
