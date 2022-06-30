@@ -58,6 +58,7 @@ class FeatureRestorer:
             else:
                 self.feature_chars = self.other_features
             self.assets = ASSETS
+            self.num_tokenizer_categories = {}
             if not os.path.exists(self.root_folder):
                 os.makedirs(self.root_folder)
             self.save()
