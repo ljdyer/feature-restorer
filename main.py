@@ -110,7 +110,10 @@ class FeatureRestorer:
                 X_train.extend(X)
                 y_train.extend(y)
 
-        self.X_train = X_train
+        X_tok = self.tokenize('X_TOKENIZER', X, char_level=True)
+        y_tok = self.tokenize('y_TOKENIZER', y, char_level=False)
+
+
         self.y_train = y_train
         print(len(X_train))
         # X_tokenized = tokenize('X_tokenizer', X, char_level=True)
@@ -262,7 +265,7 @@ class FeatureRestorer:
         # Encode input and output
         assert len(X) == self.seq_length
         assert len(y) == self.seq_length
-        return X, y
+        return ''.join(X), y
 
     # ====================
     def create_model(self, units: int, dropout: float, recur_dropout: float):
