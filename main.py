@@ -169,11 +169,13 @@ class FeatureRestorer:
     def onehot_encode_batch(self, sample_batch: np.ndarray) -> np.ndarray:
         """Convert a batch of samples to a 3d numpy array"""
 
+        num_x_categories = self.num_tokenizer_categories['X_TOKENIZER']
+        num_y_categories = self.num_tokenizer_categories['Y_TOKENIZER']
         X_seqs = []
         y_seqs = []
         for X, y in sample_batch:
-            X = to_categorical(X, self.num_X_categories)
-            y = to_categorical(y, self.num_y_categories)
+            X = to_categorical(X, num_x_categories)
+            y = to_categorical(y, num_y_categories)
             X_seqs.append(X)
             y_seqs.append(y)
         return (np.concatenate(X_seqs), np.concatenate(y_seqs))
@@ -268,6 +270,7 @@ class FeatureRestorer:
     # ====================
     def create_model(self, units: int, dropout: float, recur_dropout: float):
 
+        num_x_categories = self.num_tokenizer_categories['X_TOKENIZER']
         model = Sequential()
         model.add(Bidirectional(
                     LSTM(
@@ -276,9 +279,9 @@ class FeatureRestorer:
                         dropout=dropout,
                         recurrent_dropout=recur_dropout
                     ),
-                    input_shape=(self.seq_length, self.num_x_categories)
+                    input_shape=(self.seq_length, num_x_categories)
                 ))
-        model.add(TimeDistributed(Dense(self.num_x_categories,
+        model.add(TimeDistributed(Dense(num_x_categories,
                                         activation='softmax')))
         model.compile(loss='categorical_crossentropy',
                       optimizer='adam',
