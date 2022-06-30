@@ -110,12 +110,14 @@ class FeatureRestorer:
                 X_train.extend(X)
                 y_train.extend(y)
 
-        X_tok = self.tokenize('X_TOKENIZER', X, char_level=True)
-        y_tok = self.tokenize('y_TOKENIZER', y, char_level=False)
-
-
+        self.X_train = X_train
         self.y_train = y_train
-        print(len(X_train))
+        # X_tok = self.tokenize('X_TOKENIZER', X, char_level=True)
+        # y_tok = self.tokenize('y_TOKENIZER', y, char_level=False)
+
+
+        # self.y_train = y_train
+        # print(len(X_train))
         # X_tokenized = tokenize('X_tokenizer', X, char_level=True)
         # y_tokenized = tokenize('Y_tokenizer', y, char_level=False)
         # all_train_data = []
