@@ -85,7 +85,7 @@ class FeatureRestorer:
     def load_tmp_file(self, fname: str):
 
         fpath = self.get_file_path(fname)
-        load_file(fpath)
+        return load_file(fpath)
 
     # ====================
     def asset_path(self, asset_name: str):
