@@ -132,10 +132,18 @@ class FeatureRestorer:
         self.print_if_verbose("Loaded x_tok and y_tok")
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         all_train_data = []
-        while X_tokenized:
+        num_samples_at_start = len(X_tokenized)
+        pbar = my_tqdm(num_samples_at_start)
+        for i in pbar:
+            pbar.set_postfix({
+                'ram_usage': f"{psutil.virtual_memory().percent}%",
+                'num_samples_remaining': len(X_tokenized),
+                'total_samples': num_samples_at_start
+            })
             all_train_data.append([X_tokenized.pop(0),
                                    y_tokenized.pop(0)])
-            self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
+        assert len(all_train_data) == num_samples_at_start
+        assert len(X_tokenized) == 0
         all_train_data = np.array(all_train_data)
         assert len(all_train_data) == num_samples
         del X_tokenized
