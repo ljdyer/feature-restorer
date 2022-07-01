@@ -71,9 +71,27 @@ class FeatureRestorer:
             raise ValueError('You must specify either attrs or load_path.')
 
     # ====================
+    def get_file_path(self, fname: str):
+
+        return os.path.join(self.root_folder, fname)
+
+    # ====================
+    def save_tmp_file(self, data, fname: str):
+
+        fpath = self.get_file_path(fname)
+        save_file(data, fpath)
+
+    # ====================
+    def load_tmp_file(self, fname: str):
+
+        fpath = self.get_file_path(fname)
+        load_file(fpath)
+
+    # ====================
     def asset_path(self, asset_name: str):
 
-        return os.path.join(self.root_folder, self.assets[asset_name])
+        fname = self.assets[asset_name]
+        return self.get_file_path(fname)
 
     # ====================
     def get_asset(self, asset_name: str):
@@ -117,19 +135,19 @@ class FeatureRestorer:
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         assert len(X_train) == len(y_train)
         num_samples = len(X_train)
-        save_pickle(y_train, 'y_train_tmp.pickle')
+        self.save_tmp_file(y_train, 'y_train_tmp.pickle')
         del y_train
         self.print_if_verbose("Saved and deleted y_train")
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         X_tokenized = self.tokenize('X_TOKENIZER', X_train, char_level=True)
-        save_pickle(X_tokenized, 'x_tok_tmp.pickle')
+        self.save_tmp_file(X_tokenized, 'x_tok_tmp.pickle')
         del X_tokenized
         self.print_if_verbose("Saved and deleted X_tok")
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
-        y_train = load_pickle('y_train_tmp.pickle')
+        y_train = self.load_tmp_file('y_train_tmp.pickle')
         y_tokenized = self.tokenize('Y_TOKENIZER', y_train, char_level=False)
         del y_train
-        X_tokenized = load_pickle('X_tok_tmp.pickle')
+        X_tokenized = self.load_tmp_file('X_tok_tmp.pickle')
         self.print_if_verbose("Loaded x_tok and y_tok")
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         all_train_data = []
@@ -145,12 +163,15 @@ class FeatureRestorer:
                                    y_tokenized.pop(0)])
         assert len(all_train_data) == num_samples_at_start
         assert len(X_tokenized) == 0
-        all_train_data = np.array(all_train_data)
-        assert len(all_train_data) == num_samples
         del X_tokenized
         del y_tokenized
+        all_train_data = np.array(all_train_data)
+        assert len(all_train_data) == num_samples
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         self.save_asset(all_train_data, 'TRAIN_DATA')
+        del all_train_data
+        self.print_if_verbose("Deleted all_train_data.")
+        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         self.save()
 
     # ====================
