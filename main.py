@@ -86,13 +86,13 @@ class FeatureRestorer:
     # ====================
     def save_tmp_file(self, data, fname: str):
 
-        fpath = self.get_tmp_file_path(fname)
+        fpath = self.get_file_path(fname)
         save_file(data, fpath)
 
     # ====================
     def load_tmp_file(self, fname: str):
 
-        fpath = self.get_tmp_file_path(fname)
+        fpath = self.get_file_path(fname)
         return load_file(fpath)
 
     # ====================
