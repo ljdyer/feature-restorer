@@ -27,6 +27,14 @@ ASSETS = {
     'TRAIN_DATA': 'train_data.npy',
     'X_TOKENIZER': 'X_tokenizer.pickle',
     'Y_TOKENIZER': 'y_tokenizer.pickle',
+    'X_TRAIN_RAW': 'X_train.pickle',
+    'Y_TRAIN_RAW': 'y_train.pickle',
+    'X_TRAIN_TOKENIZED': 'X_train_tokenized.pickle',
+    'Y_TRAIN_TOKENIZED': 'y_train_tokenized.pickle',
+    'X_TRAIN_NPY': 'X_train.npy',
+    'Y_TRAIN_NPY': 'y_train.npy',
+    'X_TEST_NPY': 'X_test.npy',
+    'Y_TEST_NPY': 'y_test.npy'
 }
 
 # ====================
@@ -71,20 +79,20 @@ class FeatureRestorer:
             raise ValueError('You must specify either attrs or load_path.')
 
     # ====================
-    def get_file_path(self, fname: str):
+    def get_tmp_file_path(self, fname: str):
 
-        return os.path.join(self.root_folder, fname)
+        return os.path.join(self.root_folder, 'tmp', fname)
 
     # ====================
     def save_tmp_file(self, data, fname: str):
 
-        fpath = self.get_file_path(fname)
+        fpath = self.get_tmp_file_path(fname)
         save_file(data, fpath)
 
     # ====================
     def load_tmp_file(self, fname: str):
 
-        fpath = self.get_file_path(fname)
+        fpath = self.get_tmp_file_path(fname)
         return load_file(fpath)
 
     # ====================
@@ -130,49 +138,15 @@ class FeatureRestorer:
                 X, y = Xy
                 X_train.extend(X)
                 y_train.extend(y)
+        self.save_asset(X_train, 'X_TRAIN_RAW')
+        self.save_asset(y_train, 'Y_TRAIN_RAW')
 
-        self.print_if_verbose("Got X_train and y_train")
-        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
-        assert len(X_train) == len(y_train)
-        num_samples = len(X_train)
-        self.save_tmp_file(y_train, 'y_train_tmp.pickle')
-        del y_train
-        self.print_if_verbose("Saved and deleted y_train")
-        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
-        X_tokenized = self.tokenize('X_TOKENIZER', X_train, char_level=True)
-        self.save_tmp_file(X_tokenized, 'X_tok_tmp.pickle')
-        del X_tokenized
-        self.print_if_verbose("Saved and deleted X_tok")
-        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
-        y_train = self.load_tmp_file('y_train_tmp.pickle')
-        y_tokenized = self.tokenize('Y_TOKENIZER', y_train, char_level=False)
-        del y_train
-        X_tokenized = self.load_tmp_file('X_tok_tmp.pickle')
-        self.print_if_verbose("Loaded x_tok and y_tok")
-        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
-        all_train_data = []
-        num_samples_at_start = len(X_tokenized)
-        pbar = my_tqdm(range(num_samples_at_start))
-        for i in pbar:
-            pbar.set_postfix({
-                'ram_usage': f"{psutil.virtual_memory().percent}%",
-                'num_samples_remaining': len(X_tokenized),
-                'total_samples': num_samples_at_start
-            })
-            all_train_data.append([X_tokenized.pop(0),
-                                   y_tokenized.pop(0)])
-        assert len(all_train_data) == num_samples_at_start
-        assert len(X_tokenized) == 0
-        del X_tokenized
-        del y_tokenized
-        all_train_data = np.array(all_train_data)
-        assert len(all_train_data) == num_samples
-        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
-        self.save_asset(all_train_data, 'TRAIN_DATA')
-        del all_train_data
-        self.print_if_verbose("Deleted all_train_data.")
-        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
-        self.save()
+    # ====================
+    def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
+
+        data_pickle = self.get_asset(pickle_asset_name)
+        data_np = np.array(data_pickle)
+        self.save_asset(data_np, numpy_asset_name)
 
     # ====================
     def print_if_verbose(self, msg: str):
@@ -181,15 +155,16 @@ class FeatureRestorer:
             print(msg)
 
     # ====================
-    def tokenize(self, tokenizer_name: str, data: list, char_level: bool):
+    def tokenize(self, tokenizer_name: str, raw_asset_name: str, tokenized_asset_name: str, char_level: bool):
 
+        data = self.get_asset(raw_asset_name)
         tokenizer = Tokenizer(char_level=char_level)
         tokenizer.fit_on_texts(data)
         tokenized = tokenizer.texts_to_sequences(data)
         self.num_tokenizer_categories[tokenizer_name] = \
             len(tokenizer.word_index)
+        self.save_asset(tokenized, tokenized_asset_name)
         self.save_asset(tokenizer, tokenizer_name)
-        return tokenized
 
     # ====================
     def Xy_to_output(self, X: list, y: list) -> str:
@@ -261,6 +236,11 @@ class FeatureRestorer:
             X_ = X_.upper()
             y_ = y_[1:]
         return X_ + y_
+
+    @staticmethod
+    def show_ram_used():
+
+        print(f"RAM used: {psutil.virtual_memory().percent}%")
 
     # ====================
     def datapoint_to_Xy(self, datapoint: str) -> list:
