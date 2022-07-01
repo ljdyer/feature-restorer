@@ -18,7 +18,7 @@ from tqdm import tqdm as non_notebook_tqdm
 from tqdm.notebook import tqdm as notebook_tqdm
 from helper import save_pickle, load_pickle
 import pandas as pd
-from skearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split
 
 from helper import is_running_from_ipython, load_file, save_file
 
