@@ -79,9 +79,9 @@ class FeatureRestorer:
             raise ValueError('You must specify either attrs or load_path.')
 
     # ====================
-    def get_tmp_file_path(self, fname: str):
+    def get_file_path(self, fname: str):
 
-        return os.path.join(self.root_folder, 'tmp', fname)
+        return os.path.join(self.root_folder, fname)
 
     # ====================
     def save_tmp_file(self, data, fname: str):
@@ -155,7 +155,8 @@ class FeatureRestorer:
             print(msg)
 
     # ====================
-    def tokenize(self, tokenizer_name: str, raw_asset_name: str, tokenized_asset_name: str, char_level: bool):
+    def tokenize(self, tokenizer_name: str, raw_asset_name: str,
+                 tokenized_asset_name: str, char_level: bool):
 
         data = self.get_asset(raw_asset_name)
         tokenizer = Tokenizer(char_level=char_level)
@@ -237,6 +238,7 @@ class FeatureRestorer:
             y_ = y_[1:]
         return X_ + y_
 
+    # ====================
     @staticmethod
     def show_ram_used():
 
