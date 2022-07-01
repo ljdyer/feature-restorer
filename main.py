@@ -96,6 +96,7 @@ class FeatureRestorer:
     # ====================
     def load_train_data(self, data: list, verbose: bool = False):
 
+        self.verbose = verbose
         X_train = []
         y_train = []
         pbar = my_tqdm(range(len(data)))
