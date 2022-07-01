@@ -16,6 +16,7 @@ from keras.preprocessing.text import Tokenizer
 from tensorflow.keras.utils import to_categorical
 from tqdm import tqdm as non_notebook_tqdm
 from tqdm.notebook import tqdm as notebook_tqdm
+from helper import save_pickle, load_pickle
 
 from helper import is_running_from_ipython, load_file, save_file
 
@@ -93,7 +94,7 @@ class FeatureRestorer:
         self.save_asset(class_attrs, 'CLASS_ATTRS')
 
     # ====================
-    def load_train_data(self, data: list):
+    def load_train_data(self, data: list, verbose: bool = False):
 
         X_train = []
         y_train = []
@@ -111,19 +112,43 @@ class FeatureRestorer:
                 X_train.extend(X)
                 y_train.extend(y)
 
+        self.print_if_verbose("Got X_train and y_train")
+        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         assert len(X_train) == len(y_train)
         num_samples = len(X_train)
+        save_pickle(y_train, 'y_train_tmp.pickle')
+        del y_train
+        self.print_if_verbose("Saved and deleted y_train")
+        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         X_tokenized = self.tokenize('X_TOKENIZER', X_train, char_level=True)
+        save_pickle(X_tokenized, 'x_tok_tmp.pickle')
+        del X_tokenized
+        self.print_if_verbose("Saved and deleted X_tok")
+        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
+        y_train = load_pickle('y_train_tmp.pickle')
         y_tokenized = self.tokenize('Y_TOKENIZER', y_train, char_level=False)
+        del y_train
+        X_tokenized = load_pickle('X_tok_tmp.pickle')
+        self.print_if_verbose("Loaded x_tok and y_tok")
+        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         all_train_data = []
         while X_tokenized:
             all_train_data.append([X_tokenized.pop(0),
                                    y_tokenized.pop(0)])
-
+            self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         all_train_data = np.array(all_train_data)
         assert len(all_train_data) == num_samples
+        del X_tokenized
+        del y_tokenized
+        self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         self.save_asset(all_train_data, 'TRAIN_DATA')
         self.save()
+
+    # ====================
+    def print_if_verbose(self, msg: str):
+
+        if self.verbose == True:
+            print(msg)
 
     # ====================
     def tokenize(self, tokenizer_name: str, data: list, char_level: bool):
