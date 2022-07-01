@@ -125,7 +125,7 @@ class FeatureRestorer:
 
         output = []
         asset_list = self.assets.copy()
-        for asset_name, asset_fname in asset_list:
+        for asset_name, asset_fname in asset_list.items():
             fpath = self.asset_path(asset_name)
             output.append({
                 'Asset name': asset_name,
