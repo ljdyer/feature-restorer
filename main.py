@@ -140,7 +140,7 @@ class FeatureRestorer:
         self.print_if_verbose("Saved and deleted y_train")
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         X_tokenized = self.tokenize('X_TOKENIZER', X_train, char_level=True)
-        self.save_tmp_file(X_tokenized, 'x_tok_tmp.pickle')
+        self.save_tmp_file(X_tokenized, 'X_tok_tmp.pickle')
         del X_tokenized
         self.print_if_verbose("Saved and deleted X_tok")
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
