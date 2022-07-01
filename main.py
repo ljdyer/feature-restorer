@@ -152,7 +152,7 @@ class FeatureRestorer:
         self.print_if_verbose(f"RAM used: {psutil.virtual_memory().percent}%")
         all_train_data = []
         num_samples_at_start = len(X_tokenized)
-        pbar = my_tqdm(len(num_samples_at_start))
+        pbar = my_tqdm(range(num_samples_at_start))
         for i in pbar:
             pbar.set_postfix({
                 'ram_usage': f"{psutil.virtual_memory().percent}%",
