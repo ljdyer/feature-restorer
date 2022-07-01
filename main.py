@@ -339,7 +339,6 @@ class FeatureRestorer:
             else:
                 raise ValueError('Not implemented yet when one_of_each=False.')
             y.append(this_class)
-        # Encode input and output
         assert len(X) == self.seq_length
         assert len(y) == self.seq_length
         return ''.join(X), y
