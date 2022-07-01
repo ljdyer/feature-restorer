@@ -17,6 +17,7 @@ from tensorflow.keras.utils import to_categorical
 from tqdm import tqdm as non_notebook_tqdm
 from tqdm.notebook import tqdm as notebook_tqdm
 from helper import save_pickle, load_pickle
+import pandas as pd
 
 from helper import is_running_from_ipython, load_file, save_file
 
@@ -118,6 +119,21 @@ class FeatureRestorer:
 
         class_attrs = self.__dict__.copy()
         self.save_asset(class_attrs, 'CLASS_ATTRS')
+
+    # ====================
+    def do_assets_exist(self):
+
+        output = []
+        asset_list = self.assets.copy()
+        for asset_name, asset_fname in asset_list:
+            fpath = self.asset_path(asset_name)
+            output.append({
+                'Asset name': asset_name,
+                'Asset path': asset_fname,
+                'Exists': True if os.path.exists(fpath) else False}
+            )
+        df = pd.DataFrame(output)
+        print(df)
 
     # ====================
     def load_train_data(self, data: list, verbose: bool = False):
