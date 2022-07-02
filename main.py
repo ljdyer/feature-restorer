@@ -88,7 +88,7 @@ class FeatureRestorer:
         self.__dict__.update(attrs)
         mk_dir_if_does_not_exist(self.root_folder)
         self.assets = ASSETS
-        self.set_model_path()
+        self.set_models_path()
         self.set_feature_chars()
         self.save_class_attrs()
 
@@ -118,12 +118,12 @@ class FeatureRestorer:
             self.feature_chars = self.other_features
 
     # ====================
-    def set_model_path(self):
+    def set_models_path(self):
         """Set feature_chars attribute based on other_features and spaces
         attributes"""
 
-        self.model_path = os.path.join(self.root_folder, 'models')
-        mk_dir_if_does_not_exist(self.model_path)
+        self.models_path = os.path.join(self.root_folder, 'models')
+        mk_dir_if_does_not_exist(self.models_path)
 
     # ====================
     def get_file_path(self, fname: str) -> str:
@@ -349,38 +349,73 @@ class FeatureRestorer:
         model_root_path = self.get_model_root_path(model_name)
         if os.path.exists(model_root_path):
             raise ValueError('A model with this name already exists!')
-        model_save_folder = os.path.join(model_root_path, 'model')
-        model.save(model_save_folder)
+        model_latest_path = os.path.join(model_root_path, 'latest')
+        model.save(model_latest_path)
         model_checkpoints_folder = os.path.join(model_root_path, 'checkpoints')
         model_log_file = os.path.join(model_root_path, 'log.csv')
         model_attrs_file = os.path.join(model_root_path, MODEL_ATTRS_FNAME)
-        model_attrs.update({
+        self.__dict__.update({
             'model_name': model_name,
             'model_last_epoch': 0,
             'model_root_path': model_root_path,
-            'model_save_folder': model_save_folder,
+            'model_latest_path': model_latest_path,
             'model_checkpoints_folder': model_checkpoints_folder,
             'model_log_file': model_log_file,
             'model_attrs_file': model_attrs_file
         })
+        self.save_model_attrs()
         save_file(model_attrs, model_attrs_file)
 
     # ====================
     def load_model(self, model_name: str):
 
-        self.model = keras.models.load_model
         model_root_path = self.get_model_root_path(model_name)
         model_attrs = load_file(os.path.join(model_root_path,
                                              MODEL_ATTRS_FNAME))
         self.__dict__.update(model_attrs)
+        self.model = keras.models.load_model(self.model_latest_path)
         log_df = pd.read_csv(self.model_log_file)
         last_epoch = max([int(e) for e in log_df['epoch'].to_list])
         self.model_last_epoch = last_epoch
 
     # ====================
+    def train_model(self, epochs: int):
+
+        num_train = len(self.train_or_val_idxs('TRAIN'))
+        num_val = len(self.train_or_val_idxs('VAL'))
+        batch_size = self.model_batch_size
+
+        save_each_checkpoint = ModelCheckpoint(
+            filepath=os.path.join(self.model_root_path, 'cp-{epoch:02d}'),
+            save_freq='epoch'
+        )
+        save_latest_checkpoint = ModelCheckpoint(
+            filepath=self.model_latest_path,
+            save_freq='epoch'
+        )
+        csv_logger = CSVLogger(self.model_log_file)
+        self.model.fit(
+            self.data_loader('TRAIN', batch_size=batch_size),
+            steps_per_epoch=(num_train // batch_size),
+            validation_data=self.data_loader('VAL', batch_size=batch_size),
+            validation_steps=(num_val // batch_size),
+            callbacks=[save_each_checkpoint, save_latest_checkpoint, csv_logger],
+            initial_epoch=(self.latest_epoch + 1),
+            epochs=(self.latest_epoch + 1 + epochs),
+        )
+
+    # ====================
+    def save_model_attrs(self):
+
+        model_attrs_path = self.model_attrs_file
+        model_attrs = {attr: value for attr, value in self.__dict__.items()
+                       if attr.startswith('model_')}
+        save_file(model_attrs, model_attrs_path)
+
+    # ====================
     def get_model_root_path(self, model_name: str):
 
-        return os.path.join(self.model_path, model_name)
+        return os.path.join(self.models_path, model_name)
 
     # ====================
     def new_model(self):
@@ -434,15 +469,17 @@ class FeatureRestorer:
     def train_or_val_idxs(self, train_or_val: str):
 
         if train_or_val == 'TRAIN':
-            return self.train_idxs
+            return self.model_train_idxs
         elif train_or_val == 'VAL':
-            return self.val_idxs
+            return self.model_val_idxs
         else:
             raise RuntimeError('train_or_val must be "TRAIN" or "VAL".')
 
     # ====================
-    def train_val_split(self, keep_size: float = None, val_size: float = 0.2):
+    def train_val_split(self):
 
+        keep_size = self.model_keep_size
+        val_size = self.model_val_size
         X = self.get_asset('X', mmap=True)
         all_idxs = range(len(X))
         if keep_size is not None:
@@ -450,6 +487,6 @@ class FeatureRestorer:
                 train_test_split(all_idxs, test_size=(1.0-keep_size))
         else:
             keep_idxs = all_idxs
-        self.train_idxs, self.val_idxs = \
+        self.model_train_idxs, self.model_val_idxs = \
             train_test_split(keep_idxs, test_size=val_size)
         self.save_class_attrs()
