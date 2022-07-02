@@ -307,7 +307,8 @@ class FeatureRestorer:
     # ====================
     def create_model(self, units: int, dropout: float, recur_dropout: float):
 
-        num_x_categories = self.get_num_categories('X_TOKENIZER')
+        num_X_categories, num_y_categories = \
+            self.get_num_categories(['X_TOKENIZER', 'Y_TOKENIZER'])
         model = Sequential()
         model.add(Bidirectional(
                     LSTM(
@@ -316,9 +317,9 @@ class FeatureRestorer:
                         dropout=dropout,
                         recurrent_dropout=recur_dropout
                     ),
-                    input_shape=(self.seq_length, num_x_categories)
+                    input_shape=(self.seq_length, num_X_categories)
                 ))
-        model.add(TimeDistributed(Dense(num_x_categories,
+        model.add(TimeDistributed(Dense(num_y_categories,
                                         activation='softmax')))
         model.compile(loss='categorical_crossentropy',
                       optimizer='adam',
