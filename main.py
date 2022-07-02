@@ -360,5 +360,5 @@ class FeatureRestorer:
 
         X = self.get_asset('X_TRAIN_NPY')
         all_idxs = range(len(X))
-        self.train_idxs, self.test_idxs = \
+        self.train_idxs, self.val_idxs = \
             train_test_split(all_idxs, test_size=test_size)
