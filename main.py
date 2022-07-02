@@ -6,19 +6,20 @@ Assumptions:
 """
 
 import json
+import math
 import os
+from random import shuffle
 
 import numpy as np
+import pandas as pd
 import psutil
 from keras.layers import LSTM, Bidirectional, Dense, TimeDistributed
 from keras.models import Sequential
 from keras.preprocessing.text import Tokenizer
+from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
 from tqdm import tqdm as non_notebook_tqdm
 from tqdm.notebook import tqdm as notebook_tqdm
-from helper import save_pickle, load_pickle
-import pandas as pd
-from sklearn.model_selection import train_test_split
 
 from helper import is_running_from_ipython, load_file, save_file
 
@@ -106,10 +107,10 @@ class FeatureRestorer:
         return self.get_file_path(fname)
 
     # ====================
-    def get_asset(self, asset_name: str):
+    def get_asset(self, asset_name: str, mmap: bool = False):
 
         asset_path = self.asset_path(asset_name)
-        return load_file(asset_path)
+        return load_file(asset_path, mmap=mmap)
 
     # ====================
     def save_asset(self, data, asset_name: str):
@@ -139,9 +140,8 @@ class FeatureRestorer:
         print(df)
 
     # ====================
-    def load_train_data(self, data: list, verbose: bool = False):
+    def load_train_data(self, data: list):
 
-        self.verbose = verbose
         X_train = []
         y_train = []
         pbar = my_tqdm(range(len(data)))
@@ -166,12 +166,6 @@ class FeatureRestorer:
         data_pickle = self.get_asset(pickle_asset_name)
         data_np = np.array(data_pickle)
         self.save_asset(data_np, numpy_asset_name)
-
-    # ====================
-    def print_if_verbose(self, msg: str):
-
-        if self.verbose == True:
-            print(msg)
 
     # ====================
     def tokenize(self, tokenizer_name: str, raw_asset_name: str,
@@ -215,51 +209,6 @@ class FeatureRestorer:
             y_preview = y_preview + (str(y[i])).ljust(reqd_length)
         print(X_preview)
         print(y_preview)
-
-    # ====================
-    def onehot_encode_batch(self, sample_batch: np.ndarray) -> np.ndarray:
-        """Convert a batch of samples to a 3d numpy array"""
-
-        num_x_categories = self.num_tokenizer_categories['X_TOKENIZER']
-        num_y_categories = self.num_tokenizer_categories['Y_TOKENIZER']
-        X_seqs = []
-        y_seqs = []
-        for X, y in sample_batch:
-            X = to_categorical(X, num_x_categories)
-            y = to_categorical(y, num_y_categories)
-            X_seqs.append(X)
-            y_seqs.append(y)
-        return (np.concatenate(X_seqs), np.concatenate(y_seqs))
-
-    # ====================
-    def data_loader(self, samples: np.ndarray, batch_size: int):
-        """Iterator function to create batches"""
-
-        while True:
-            for idx in range(0, len(samples) - batch_size, batch_size):
-                sample_batch = samples[idx: idx + batch_size]
-                X, y = self.onehot_encode_batch(sample_batch)
-                yield(X, y)
-
-    # ====================
-    def train_val_split(self, val_size: float = 0.2):
-
-        print("Loading X data")
-        X = self.get_asset('X_TRAIN')
-        print("Loading y data")
-        y = self.get_asset('Y_TRAIN')
-        
-        print("Performing split")
-        X_train, X_val, y_train, y_val = \
-            train_test_split(X, y, test_size=val_size)
-        print("Saving X_train")
-        self.save_asset(X_train, 'X')
-        print("Saving X_val")
-        self.save_asset(X_val, 'X')
-        print("Saving y_train")
-        self.save_asset(y_train, 'X')
-        print("Saving y_val")
-        self.save_asset(y_val, 'X')
 
     # ====================
     @staticmethod
@@ -363,3 +312,44 @@ class FeatureRestorer:
                       optimizer='adam',
                       metrics=['accuracy'])
         return model
+
+    # ====================
+    def data_loader(self, train_or_val: str, batch_size: int):
+        """Iterator function to create batches"""
+
+        while True:
+            X = self.get_asset('X_TRAIN_NPY', mmap=True)
+            y = self.get_asset('Y_TRAIN_NPY', mmap=True)
+            idxs = self.train_or_val_idxs(train_or_val)
+            shuffle(idxs)
+            num_iters = math.floor(len(idxs) / batch_size)
+            num_X_categories, num_y_categories = self.get_num_categories_xy()
+            for i in range(num_iters):
+                X_encoded = to_categorical(
+                    X[idxs[(i*batch_size):(i+1*batch_size)]], num_X_categories)
+                y_encoded = to_categorical(
+                    y[idxs[(i*batch_size):(i+1*batch_size)]], num_y_categories)
+                yield (X_encoded, y_encoded)
+
+    # ====================
+    def train_or_val_idxs(self, train_or_val: str):
+
+        if train_or_val == 'TRAIN':
+            return self.train_idxs
+        else:
+            return self.val_idxs
+
+    # ====================
+    def get_num_categories_xy(self):
+
+        num_x_categories = self.num_tokenizer_categories['X_TOKENIZER']
+        num_y_categories = self.num_tokenizer_categories['Y_TOKENIZER']
+        return (num_x_categories, num_y_categories)
+
+    # ====================
+    def train_val_split(self, test_size=0.2):
+
+        X = self.get_asset('X_TRAIN_NPY')
+        all_idxs = range(len(X))
+        self.train_idxs, self.test_idxs = \
+            train_test_split(all_idxs, test_size=test_size)

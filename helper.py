@@ -14,13 +14,13 @@ def is_running_from_ipython():
 
 
 # ====================
-def load_file(fp: str):
+def load_file(fp: str, mmap: bool = False):
 
     _, fext = os.path.splitext(fp)
     if fext == '.pickle':
         return load_pickle(fp)
     elif fext == '.npy':
-        return load_npy(fp)
+        return load_npy(fp, mmap=mmap)
     else:
         raise RuntimeError('Invalid file ext!')
 
@@ -34,10 +34,10 @@ def load_pickle(fp: str):
 
 
 # ====================
-def load_npy(fp: str):
+def load_npy(fp: str, mmap: bool = False):
 
     with open(fp, 'rb') as f:
-        opened = np.load(f)
+        opened = np.load(f, mmap_mode=mmap)
     return opened
 
 
