@@ -335,7 +335,7 @@ class FeatureRestorer:
             y = self.get_asset('Y_TRAIN_NPY', mmap=True)
             idxs = self.train_or_val_idxs(train_or_val)
             shuffle(idxs)
-            num_iters = math.floor(len(idxs) / batch_size)
+            num_iters = len(idxs) // batch_size
             num_X_categories, num_y_categories = \
                 self.get_num_categories(['X_TOKENIZER', 'Y_TOKENIZER'])
             for i in range(num_iters):
@@ -350,7 +350,7 @@ class FeatureRestorer:
 
         if train_or_val == 'TRAIN':
             return self.train_idxs
-        elif train_or_val == 'TEST':
+        elif train_or_val == 'VAL':
             return self.val_idxs
         else:
             raise RuntimeError('train_or_val must be "TRAIN" or "VAL".')
