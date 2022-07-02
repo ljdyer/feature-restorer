@@ -407,6 +407,7 @@ class FeatureRestorer:
             initial_epoch=(self.model_last_epoch + 1),
             epochs=(self.model_last_epoch + 1 + epochs),
         )
+        self.model_last_epoch += epochs
 
     # ====================
     def save_model_attrs(self):
