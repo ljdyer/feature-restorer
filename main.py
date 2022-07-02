@@ -122,7 +122,7 @@ class FeatureRestorer:
         """Set feature_chars attribute based on other_features and spaces
         attributes"""
 
-        self.model_path = os.path.join(self.load_folder, 'models')
+        self.model_path = os.path.join(self.root_folder, 'models')
         mk_dir_if_does_not_exist(self.model_path)
 
     # ====================
