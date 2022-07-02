@@ -22,7 +22,7 @@ def load_file(fp: str, mmap: bool = False):
     elif fext == '.npy' and mmap is False:
         return load_npy(fp)
     elif fext == '.npy' and mmap is True:
-        return np.load(fp, mmap_mode=True)
+        return np.load(fp, mmap_mode='r')
     else:
         raise RuntimeError('Invalid file ext!')
 
