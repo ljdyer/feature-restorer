@@ -13,15 +13,17 @@ from typing import Any, List, Union
 import numpy as np
 import pandas as pd
 import psutil
+import keras
 from keras.layers import LSTM, Bidirectional, Dense, TimeDistributed
 from keras.models import Sequential
 from keras.preprocessing.text import Tokenizer
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.utils import to_categorical
+from keras.utils import to_categorical
 
 from helper import get_tqdm, load_file, mk_dir_if_does_not_exist, save_file
 
 CLASS_ATTRS_FNAME = 'CLASS_ATTRS.pickle'
+MODEL_ATTRS_FNAME = 'MODEL_ATTRS.pickle'
 
 ASSETS = {
     'CLASS_ATTRS': CLASS_ATTRS_FNAME,
@@ -84,6 +86,7 @@ class FeatureRestorer:
         self.__dict__.update(attrs)
         mk_dir_if_does_not_exist(self.root_folder)
         self.assets = ASSETS
+        self.set_model_path()
         self.set_feature_chars()
         self.save_class_attrs()
 
@@ -111,6 +114,14 @@ class FeatureRestorer:
             self.feature_chars = self.other_features + [' ']
         else:
             self.feature_chars = self.other_features
+
+    # ====================
+    def set_model_path(self):
+        """Set feature_chars attribute based on other_features and spaces
+        attributes"""
+
+        self.model_path = os.path.join(self.load_folder, 'models')
+        mk_dir_if_does_not_exist(self.model_path)
 
     # ====================
     def get_file_path(self, fname: str) -> str:
@@ -329,7 +340,48 @@ class FeatureRestorer:
         return ''.join(X), y
 
     # ====================
-    def create_model(self, units: int, dropout: float, recur_dropout: float):
+    def add_model(self, model_name: str, model_attrs: dict):
+
+        self.__dict__.update(model_attrs)
+        model = self.new_model()
+        model_root_path = self.get_model_root_path(model_name)
+        if os.path.exists(model_root_path):
+            raise ValueError('A model with this name already exists!')
+        model_save_folder = os.path.join(model_root_path, 'model')
+        model.save(model_save_folder)
+        model_checkpoints_folder = os.path.join(model_root_path, 'checkpoints')
+        model_log_file = os.path.join(model_root_path, 'log.csv')
+        model_attrs_file = os.path.join(model_root_path, MODEL_ATTRS_FNAME)
+        model_attrs.update({
+            'model_name': model_name,
+            'model_last_epoch': 0,
+            'model_root_path': model_root_path,
+            'model_save_folder': model_save_folder,
+            'model_checkpoints_folder': model_checkpoints_folder,
+            'model_log_file': model_log_file,
+            'model_attrs_file': model_attrs_file
+        })
+        save_file(model_attrs, model_attrs_file)
+
+    # ====================
+    def load_model(self, model_name: str):
+
+        self.model = keras.models.load_model
+        model_root_path = self.get_model_root_path(model_name)
+        model_attrs = load_file(os.path.join(model_root_path,
+                                             MODEL_ATTRS_FNAME))
+        self.__dict__.update(model_attrs)
+        log_df = pd.read_csv(self.model_log_file)
+        last_epoch = max([int(e) for e in log_df['epoch'].to_list])
+        self.model_last_epoch = last_epoch
+
+    # ====================
+    def get_model_root_path(self, model_name: str):
+
+        return os.path.join(self.model_path, model_name)
+
+    # ====================
+    def new_model(self, units: int, dropout: float, recur_dropout: float):
 
         num_X_categories, num_y_categories = \
             self.get_num_categories(['X_TOKENIZER', 'Y_TOKENIZER'])
@@ -384,12 +436,15 @@ class FeatureRestorer:
             raise RuntimeError('train_or_val must be "TRAIN" or "VAL".')
 
     # ====================
-    def train_val_split(self, keep_size: float = 1.0, val_size: float = 0.2):
+    def train_val_split(self, keep_size: float = None, val_size: float = 0.2):
 
         X = self.get_asset('X', mmap=True)
         all_idxs = range(len(X))
-        keep_idxs, _ = \
-            train_test_split(all_idxs, test_size=(1.0-keep_size))
+        if keep_size is not None:
+            keep_idxs, _ = \
+                train_test_split(all_idxs, test_size=(1.0-keep_size))
+        else:
+            keep_idxs = all_idxs
         self.train_idxs, self.val_idxs = \
             train_test_split(keep_idxs, test_size=val_size)
         self.save_class_attrs()
