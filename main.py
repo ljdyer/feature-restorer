@@ -374,8 +374,8 @@ class FeatureRestorer:
                                              MODEL_ATTRS_FNAME))
         self.__dict__.update(model_attrs)
         self.model = keras.models.load_model(self.model_latest_path)
-        log_df = pd.read_csv(self.model_log_file)
         try:
+            log_df = pd.read_csv(self.model_log_file)
             last_epoch = max([int(e) for e in log_df['epoch'].to_list])
         except FileNotFoundError:
             last_epoch = 0
@@ -415,6 +415,10 @@ class FeatureRestorer:
         model_attrs = {attr: value for attr, value in self.__dict__.items()
                        if attr.startswith('model_')}
         save_file(model_attrs, model_attrs_path)
+        print(
+            f"Saved {len(model_attrs.keys())} model attributes to ",
+            model_attrs_path
+        )
 
     # ====================
     def get_model_root_path(self, model_name: str):
