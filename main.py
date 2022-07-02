@@ -384,10 +384,12 @@ class FeatureRestorer:
             raise RuntimeError('train_or_val must be "TRAIN" or "VAL".')
 
     # ====================
-    def train_val_split(self, test_size=0.2):
+    def train_val_split(self, keep_size: float = 1.0, val_size: float = 0.2):
 
-        X = self.get_asset('X')
+        X = self.get_asset('X', mmap=True)
         all_idxs = range(len(X))
+        keep_idxs, _ = \
+            train_test_split(all_idxs, test_size=(1.0-keep_size))
         self.train_idxs, self.val_idxs = \
-            train_test_split(all_idxs, test_size=test_size)
+            train_test_split(keep_idxs, test_size=val_size)
         self.save_class_attrs()
