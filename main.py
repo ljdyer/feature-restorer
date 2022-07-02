@@ -187,10 +187,10 @@ class FeatureRestorer:
 
         if isinstance(tokenizers, str):
             tokenizer = self.get_asset(tokenizers)
-            num_categories = len(tokenizer.word_index)
+            num_categories = len(tokenizer.word_index) + 1
         elif isinstance(tokenizers, list):
             tokenizers = [self.get_asset(t) for t in tokenizers]
-            num_categories = tuple([len(t.word_index) for t in tokenizers])
+            num_categories = tuple([len(t.word_index) + 1 for t in tokenizers])
         return num_categories
 
     # ====================
