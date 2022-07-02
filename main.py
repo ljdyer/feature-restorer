@@ -20,6 +20,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
 from tqdm import tqdm as non_notebook_tqdm
 from tqdm.notebook import tqdm as notebook_tqdm
+from typing import List, Union
 
 from helper import is_running_from_ipython, load_file, save_file
 
@@ -182,6 +183,17 @@ class FeatureRestorer:
         self.save_asset(tokenizer, tokenizer_name)
 
     # ====================
+    def get_num_categories(self, tokenizers: Union[List[str], str]):
+
+        if isinstance(tokenizers, str):
+            tokenizer = self.get_asset(tokenizers)
+            num_categories = len(tokenizer.word_index)
+        elif isinstance(tokenizers, list):
+            tokenizers = [self.get_asset(t) for t in tokenizers]
+            num_categories = tuple([len(t.word_index) for t in tokenizers])
+        return num_categories
+
+    # ====================
     def Xy_to_output(self, X: list, y: list) -> str:
 
         X_tokenizer = self.get_asset('X_TOKENIZER')
@@ -295,7 +307,7 @@ class FeatureRestorer:
     # ====================
     def create_model(self, units: int, dropout: float, recur_dropout: float):
 
-        num_x_categories = self.num_tokenizer_categories['X_TOKENIZER']
+        num_x_categories = self.get_num_categories('X_TOKENIZER')
         model = Sequential()
         model.add(Bidirectional(
                     LSTM(
@@ -323,7 +335,8 @@ class FeatureRestorer:
             idxs = self.train_or_val_idxs(train_or_val)
             shuffle(idxs)
             num_iters = math.floor(len(idxs) / batch_size)
-            num_X_categories, num_y_categories = self.get_num_categories_xy()
+            num_X_categories, num_y_categories = \
+                self.get_num_categories(['X_TOKENIZER', 'Y_TOKENIZER'])
             for i in range(num_iters):
                 X_encoded = to_categorical(
                     X[idxs[(i*batch_size):(i+1*batch_size)]], num_X_categories)
@@ -336,15 +349,10 @@ class FeatureRestorer:
 
         if train_or_val == 'TRAIN':
             return self.train_idxs
-        else:
+        elif train_or_val == 'TEST':
             return self.val_idxs
-
-    # ====================
-    def get_num_categories_xy(self):
-
-        num_x_categories = self.num_tokenizer_categories['X_TOKENIZER']
-        num_y_categories = self.num_tokenizer_categories['Y_TOKENIZER']
-        return (num_x_categories, num_y_categories)
+        else:
+            raise RuntimeError('train_or_val must be "TRAIN" or "VAL".')
 
     # ====================
     def train_val_split(self, test_size=0.2):
