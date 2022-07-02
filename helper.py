@@ -19,8 +19,10 @@ def load_file(fp: str, mmap: bool = False):
     _, fext = os.path.splitext(fp)
     if fext == '.pickle':
         return load_pickle(fp)
-    elif fext == '.npy':
-        return load_npy(fp, mmap=mmap)
+    elif fext == '.npy' and mmap is False:
+        return load_npy(fp)
+    elif fext == '.npy' and mmap is True:
+        return np.load(fp, mmap_mode=True)
     else:
         raise RuntimeError('Invalid file ext!')
 
