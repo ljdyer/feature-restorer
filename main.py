@@ -63,9 +63,9 @@ class FeatureRestorer:
         if attrs is not None and load_folder is not None:
             raise ValueError('You cannot specify both attrs and load_folder.')
         elif attrs is not None:
-            self.init_from_attrs(self, attrs)
+            self.init_from_attrs(attrs)
         elif load_folder is not None:
-            self.init_from_load_folder(self, load_folder)
+            self.init_from_load_folder(load_folder)
         else:
             raise ValueError('You must specify either attrs or load_folder.')
 
