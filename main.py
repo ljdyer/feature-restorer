@@ -6,9 +6,9 @@ Assumptions:
 """
 
 import json
-import math
 import os
 from random import shuffle
+from typing import Any, List, Union
 
 import numpy as np
 import pandas as pd
@@ -18,115 +18,134 @@ from keras.models import Sequential
 from keras.preprocessing.text import Tokenizer
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
-from tqdm import tqdm as non_notebook_tqdm
-from tqdm.notebook import tqdm as notebook_tqdm
-from typing import List, Union
 
-from helper import is_running_from_ipython, load_file, save_file
+from helper import get_tqdm, load_file, mk_dir_if_does_not_exist, save_file
 
-CLASS_ATTRS_FNAME = 'class_attrs.pickle'
+CLASS_ATTRS_FNAME = 'CLASS_ATTRS.pickle'
 
 ASSETS = {
     'CLASS_ATTRS': CLASS_ATTRS_FNAME,
-    'TRAIN_DATA': 'train_data.npy',
-    'X_TOKENIZER': 'X_tokenizer.pickle',
-    'Y_TOKENIZER': 'y_tokenizer.pickle',
-    'X_TRAIN_RAW': 'X_train.pickle',
-    'Y_TRAIN_RAW': 'y_train.pickle',
-    'X_TRAIN_TOKENIZED': 'X_train_tokenized.pickle',
-    'Y_TRAIN_TOKENIZED': 'y_train_tokenized.pickle',
-    'X_TRAIN_NPY': 'X_train.npy',
-    'Y_TRAIN_NPY': 'y_train.npy',
-    'X_TRAIN': 'X_train.npy',
-    'X_VAL': 'X_val.npy',
-    'Y_TRAIN': 'y_train.npy',
-    'Y_VAL': 'y_val.npy'
+    'X_TOKENIZER': 'X_TOKENIZER.pickle',
+    'Y_TOKENIZER': 'y_TOKENIZER.pickle',
+    'X_RAW': 'X_train.pickle',
+    'Y_RAW': 'y_train.pickle',
+    'X_TOKENIZED': 'X_train_tokenized.pickle',
+    'Y_TOKENIZED': 'y_train_tokenized.pickle',
+    'X': 'X.npy',
+    'Y': 'Y.npy',
 }
 
-# ====================
-if is_running_from_ipython():
-    my_tqdm = notebook_tqdm
-else:
-    my_tqdm = non_notebook_tqdm
+REQUIRED_ATTRS = {
+    'root_folder': str,
+    'capitalisation': bool,
+    'spaces': bool,
+    'other_features': list,
+    'seq_length': int,
+    'one_of_each': bool
+}
+
+tqdm_ = get_tqdm()
 
 
 # ====================
 class FeatureRestorer:
-    """
-    Required attributes for new instance:
-
-    root_folder: str,
-    capitalisation: bool,
-    spaces: bool,
-    other_features: list,
-    seq_length: int,
-    one_of_each: bool = True,
-    """
 
     # ====================
     def __init__(self, attrs: dict = None, load_folder: str = None):
+        """Initialize a new instance.
 
-        if attrs is not None:
-            self.__dict__.update(attrs)
-            if self.spaces:
-                self.feature_chars = self.other_features + [' ']
-            else:
-                self.feature_chars = self.other_features
-            self.assets = ASSETS
-            self.num_tokenizer_categories = {}
-            if not os.path.exists(self.root_folder):
-                os.makedirs(self.root_folder)
-            self.save()
+        Exactly one of attrs or load_folder must be specified.
+
+        If attrs is specified, a new instance is created with the attributes
+        provided. If load_folder is specified, attributes are loaded from the
+        load folder."""
+
+        if attrs is not None and load_folder is not None:
+            raise ValueError('You cannot specify both attrs and load_folder.')
+        elif attrs is not None:
+            self.init_from_attrs(self, attrs)
         elif load_folder is not None:
-            class_attrs_path = os.path.join(load_folder, CLASS_ATTRS_FNAME)
-            attrs = load_file(class_attrs_path)
-            self.__dict__.update(attrs)
+            self.init_from_load_folder(self, load_folder)
         else:
-            raise ValueError('You must specify either attrs or load_path.')
+            raise ValueError('You must specify either attrs or load_folder.')
 
     # ====================
-    def get_file_path(self, fname: str):
+    def init_from_attrs(self, attrs: dict):
+        """Initialize a new instance from a dictionary of attributes"""
 
-        return os.path.join(self.root_folder, fname)
-
-    # ====================
-    def save_tmp_file(self, data, fname: str):
-
-        fpath = self.get_file_path(fname)
-        save_file(data, fpath)
-
-    # ====================
-    def load_tmp_file(self, fname: str):
-
-        fpath = self.get_file_path(fname)
-        return load_file(fpath)
-
-    # ====================
-    def asset_path(self, asset_name: str):
-
-        fname = self.assets[asset_name]
-        return self.get_file_path(fname)
+        for reqd_attr, reqd_type in REQUIRED_ATTRS.items():
+            try:
+                val = attrs[reqd_attr]
+                if not isinstance(val, reqd_type):
+                    raise ValueError(
+                        f'{reqd_attr} should have type {str(reqd_attr)}')
+            except KeyError:
+                raise ValueError(f'attrs must have key {reqd_attr}.')
+        self.__dict__.update(attrs)
+        mk_dir_if_does_not_exist(self.root_folder)
+        self.assets = ASSETS
+        self.set_feature_chars()
+        self.save_class_attrs()
 
     # ====================
-    def get_asset(self, asset_name: str, mmap: bool = False):
-
-        asset_path = self.asset_path(asset_name)
-        return load_file(asset_path, mmap=mmap)
-
-    # ====================
-    def save_asset(self, data, asset_name: str):
-
-        asset_path = self.asset_path(asset_name)
-        save_file(data, asset_path)
-
-    # ====================
-    def save(self):
+    def save_class_attrs(self):
+        """Save the class attributes"""
 
         class_attrs = self.__dict__.copy()
         self.save_asset(class_attrs, 'CLASS_ATTRS')
 
     # ====================
+    def init_from_load_folder(self, load_folder: str):
+        """Initialize a new instance from a load folder"""
+
+        class_attrs_path = os.path.join(load_folder, CLASS_ATTRS_FNAME)
+        attrs = load_file(class_attrs_path)
+        self.__dict__.update(attrs)
+
+    # ====================
+    def set_feature_chars(self):
+        """Set feature_chars attribute based on other_features and spaces
+        attributes"""
+
+        if self.spaces:
+            self.feature_chars = self.other_features + [' ']
+        else:
+            self.feature_chars = self.other_features
+
+    # ====================
+    def get_file_path(self, fname: str) -> str:
+        """Get a file path from a file name by appending the root folder of
+        the current instance."""
+
+        return os.path.join(self.root_folder, fname)
+
+    # ====================
+    def asset_path(self, asset_name: str) -> str:
+        """Get the path to an asset"""
+
+        fname = self.assets[asset_name]
+        return self.get_file_path(fname)
+
+    # ====================
+    def get_asset(self, asset_name: str, mmap: bool = False) -> Any:
+        """Get an asset based on the asset name
+
+        Use numpy memmap if mmap=True"""
+
+        asset_path = self.asset_path(asset_name)
+        return load_file(asset_path, mmap=mmap)
+
+    # ====================
+    def save_asset(self, data: Any, asset_name: str):
+        """Save data to the asset file for the named asset"""
+
+        asset_path = self.asset_path(asset_name)
+        save_file(data, asset_path)
+
+    # ====================
     def do_assets_exist(self):
+        """Print a table of asset names, file names, and whether each file
+        exists in the root folder."""
 
         output = []
         asset_list = self.assets.copy()
@@ -141,46 +160,51 @@ class FeatureRestorer:
         print(df)
 
     # ====================
-    def load_train_data(self, data: list):
+    def Xy_from_data(self, data: List[str]):
+        """Get raw X and y lists from a list of strings
+
+        Save in 'X_RAW' and 'Y_RAW' assets"""
 
         X_train = []
         y_train = []
-        pbar = my_tqdm(range(len(data)))
-        for i in pbar:
+        pbar = tqdm_(range(len(data)))
+        for _ in pbar:
             pbar.set_postfix({
                 'ram_usage': f"{psutil.virtual_memory().percent}%",
                 'num_samples': len(X_train),
                 'estimated_num_samples':
                     len(X_train) * (len(pbar) / (pbar.n + 1))
             })
-            Xy = self.datapoint_to_Xy(data[i])
+            Xy = self.datapoint_to_Xy(data.pop(0))
             if Xy is not None:
                 X, y = Xy
                 X_train.extend(X)
                 y_train.extend(y)
-        self.save_asset(X_train, 'X_TRAIN_RAW')
-        self.save_asset(y_train, 'Y_TRAIN_RAW')
-
-    # ====================
-    def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
-
-        data_pickle = self.get_asset(pickle_asset_name)
-        data_np = np.array(data_pickle)
-        self.save_asset(data_np, numpy_asset_name)
+        self.save_asset(X_train, 'X_RAW')
+        self.save_asset(y_train, 'Y_RAW')
 
     # ====================
     def tokenize(self, tokenizer_name: str, raw_asset_name: str,
                  tokenized_asset_name: str, char_level: bool):
+        """Open an asset, create and fit a Keras tokenizer, tokenize the
+        asset, and save both the tokenizer and the tokenized data"""
 
         data = self.get_asset(raw_asset_name)
         tokenizer = Tokenizer(char_level=char_level)
         tokenizer.fit_on_texts(data)
         tokenized = tokenizer.texts_to_sequences(data)
-        self.num_tokenizer_categories[tokenizer_name] = \
-            len(tokenizer.word_index)
         self.save_asset(tokenized, tokenized_asset_name)
         print(f'Saved numpy array with shape {tokenized.shape}')
         self.save_asset(tokenizer, tokenizer_name)
+
+    # ====================
+    def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
+        """Open a .pickle asset, convert to a numpy array, and save as a .npy
+        asset"""
+
+        data_pickle = self.get_asset(pickle_asset_name)
+        data_np = np.array(data_pickle)
+        self.save_asset(data_np, numpy_asset_name)
 
     # ====================
     def get_num_categories(self, tokenizers: Union[List[str], str]):
@@ -331,8 +355,8 @@ class FeatureRestorer:
         """Iterator function to create batches"""
 
         while True:
-            X = self.get_asset('X_TRAIN_NPY', mmap=True)
-            y = self.get_asset('Y_TRAIN_NPY', mmap=True)
+            X = self.get_asset('X', mme)
+            y = self.get_asset('Y', mYe)
             idxs = self.train_or_val_idxs(train_or_val)
             shuffle(idxs)
             num_iters = len(idxs) // batch_size
@@ -340,9 +364,13 @@ class FeatureRestorer:
                 self.get_num_categories(['X_TOKENIZER', 'Y_TOKENIZER'])
             for i in range(num_iters):
                 X_encoded = to_categorical(
-                    X[idxs[(i*batch_size):((i+1)*batch_size)]], num_X_categories)
+                    X[idxs[(i*batch_size):((i+1)*batch_size)]],
+                    num_X_categories
+                )
                 y_encoded = to_categorical(
-                    y[idxs[(i*batch_size):((i+1)*batch_size)]], num_y_categories)
+                    y[idxs[(i*batch_size):((i+1)*batch_size)]],
+                    num_y_categories
+                )
                 yield (X_encoded, y_encoded)
 
     # ====================
@@ -358,7 +386,7 @@ class FeatureRestorer:
     # ====================
     def train_val_split(self, test_size=0.2):
 
-        X = self.get_asset('X_TRAIN_NPY')
+        X = self.get_asset('X')
         all_idxs = range(len(X))
         self.train_idxs, self.val_idxs = \
             train_test_split(all_idxs, test_size=test_size)
