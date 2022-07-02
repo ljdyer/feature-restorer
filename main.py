@@ -18,7 +18,7 @@ from keras.layers import LSTM, Bidirectional, Dense, TimeDistributed
 from keras.models import Sequential
 from keras.preprocessing.text import Tokenizer
 from sklearn.model_selection import train_test_split
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 
 from helper import get_tqdm, load_file, mk_dir_if_does_not_exist, save_file
 
