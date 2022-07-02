@@ -354,6 +354,7 @@ class FeatureRestorer:
         model_checkpoints_folder = os.path.join(model_root_path, 'checkpoints')
         model_log_file = os.path.join(model_root_path, 'log.csv')
         model_attrs_file = os.path.join(model_root_path, MODEL_ATTRS_FNAME)
+        self.train_val_split()
         self.__dict__.update({
             'model_name': model_name,
             'model_last_epoch': 0,
@@ -387,7 +388,6 @@ class FeatureRestorer:
         num_train = len(self.train_or_val_idxs('TRAIN'))
         num_val = len(self.train_or_val_idxs('VAL'))
         batch_size = self.model_batch_size
-
         save_each_checkpoint = ModelCheckpoint(
             filepath=os.path.join(self.model_root_path, 'cp-{epoch:02d}'),
             save_freq='epoch'
