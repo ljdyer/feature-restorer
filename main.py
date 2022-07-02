@@ -340,9 +340,9 @@ class FeatureRestorer:
                 self.get_num_categories(['X_TOKENIZER', 'Y_TOKENIZER'])
             for i in range(num_iters):
                 X_encoded = to_categorical(
-                    X[idxs[(i*batch_size):(i+1*batch_size)]], num_X_categories)
+                    X[idxs[(i*batch_size):((i+1)*batch_size)]], num_X_categories)
                 y_encoded = to_categorical(
-                    y[idxs[(i*batch_size):(i+1*batch_size)]], num_y_categories)
+                    y[idxs[(i*batch_size):((i+1)*batch_size)]], num_y_categories)
                 yield (X_encoded, y_encoded)
 
     # ====================
