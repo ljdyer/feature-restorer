@@ -404,8 +404,8 @@ class FeatureRestorer:
             validation_steps=(num_val // batch_size),
             callbacks=[
                 save_each_checkpoint, save_latest_checkpoint, csv_logger],
-            initial_epoch=(self.model_last_epoch + 1),
-            epochs=(self.model_last_epoch + 1 + epochs),
+            initial_epoch=self.model_last_epoch,
+            epochs=(self.model_last_epoch + epochs),
         )
         self.model_last_epoch += epochs
 
