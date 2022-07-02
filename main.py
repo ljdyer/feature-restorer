@@ -375,7 +375,10 @@ class FeatureRestorer:
         self.__dict__.update(model_attrs)
         self.model = keras.models.load_model(self.model_latest_path)
         log_df = pd.read_csv(self.model_log_file)
-        last_epoch = max([int(e) for e in log_df['epoch'].to_list])
+        try:
+            last_epoch = max([int(e) for e in log_df['epoch'].to_list])
+        except FileNotFoundError:
+            last_epoch = 0
         self.model_last_epoch = last_epoch
 
     # ====================
@@ -399,9 +402,10 @@ class FeatureRestorer:
             steps_per_epoch=(num_train // batch_size),
             validation_data=self.data_loader('VAL', batch_size=batch_size),
             validation_steps=(num_val // batch_size),
-            callbacks=[save_each_checkpoint, save_latest_checkpoint, csv_logger],
-            initial_epoch=(self.latest_epoch + 1),
-            epochs=(self.latest_epoch + 1 + epochs),
+            callbacks=[
+                save_each_checkpoint, save_latest_checkpoint, csv_logger],
+            initial_epoch=(self.model_last_epoch + 1),
+            epochs=(self.model_last_epoch + 1 + epochs),
         )
 
     # ====================
