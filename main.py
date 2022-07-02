@@ -27,10 +27,10 @@ ASSETS = {
     'CLASS_ATTRS': CLASS_ATTRS_FNAME,
     'X_TOKENIZER': 'X_TOKENIZER.pickle',
     'Y_TOKENIZER': 'y_TOKENIZER.pickle',
-    'X_RAW': 'X_train.pickle',
-    'Y_RAW': 'y_train.pickle',
-    'X_TOKENIZED': 'X_train_tokenized.pickle',
-    'Y_TOKENIZED': 'y_train_tokenized.pickle',
+    'X_RAW': 'X_RAW.pickle',
+    'Y_RAW': 'Y_RAW.pickle',
+    'X_TOKENIZED': 'X_TOKENIZED.pickle',
+    'Y_TOKENIZED': 'Y_TOKENIZED.pickle',
     'X': 'X.npy',
     'Y': 'Y.npy',
 }
@@ -355,8 +355,8 @@ class FeatureRestorer:
         """Iterator function to create batches"""
 
         while True:
-            X = self.get_asset('X', mme)
-            y = self.get_asset('Y', mYe)
+            X = self.get_asset('X', mmap=True)
+            y = self.get_asset('Y', mmap=True)
             idxs = self.train_or_val_idxs(train_or_val)
             shuffle(idxs)
             num_iters = len(idxs) // batch_size
@@ -390,3 +390,4 @@ class FeatureRestorer:
         all_idxs = range(len(X))
         self.train_idxs, self.val_idxs = \
             train_test_split(all_idxs, test_size=test_size)
+        self.save_class_attrs()
