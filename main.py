@@ -19,6 +19,8 @@ from keras.models import Sequential
 from keras.preprocessing.text import Tokenizer
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import CSVLogger
 
 from helper import get_tqdm, load_file, mk_dir_if_does_not_exist, save_file
 
@@ -381,8 +383,11 @@ class FeatureRestorer:
         return os.path.join(self.model_path, model_name)
 
     # ====================
-    def new_model(self, units: int, dropout: float, recur_dropout: float):
+    def new_model(self):
 
+        units = self.model_units
+        dropout = self.model_dropout
+        recur_dropout = self.model_recur_dropout
         num_X_categories, num_y_categories = \
             self.get_num_categories(['X_TOKENIZER', 'Y_TOKENIZER'])
         model = Sequential()
