@@ -474,7 +474,7 @@ class FeatureRestorer:
             print("Warning: length of input string is less than model sequence", 
                   "length")
             input_str = \
-                input_str + ['⳨' for _ in range(self.seq_length - len(input_str)]
+                input_str + ['⳨' for _ in range(self.seq_length - len(input_str))]
         tokenized = self.input_str_to_tokenized(input_str)
         num_X_categories = self.get_num_categories('X_TOKENIZER')
         X_encoded = to_categorical(tokenized, num_X_categories)
