@@ -226,13 +226,6 @@ class FeatureRestorer:
               f'categories to {tokenizer_name}.')
 
     # ====================
-    def X_tokenize_input_str(self, input_str):
-
-        tokenizer = self.get_asset('X_TOKENIZER')
-        tokenized = tokenizer.texts_to_sequences([input_str])
-        return tokenized
-
-    # ====================
     def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
         """Open a .pickle asset, convert to a numpy array, and save as a .npy
         asset"""
@@ -242,6 +235,8 @@ class FeatureRestorer:
         self.save_asset(data_np, numpy_asset_name)
         print(f'Saved numpy array with shape {str(data_np.shape)} to',
               f'{numpy_asset_name}.')
+
+    # === PREDICTION ===
 
     # ====================
     def get_num_categories(self, tokenizers: Union[List[str], str]):
@@ -253,6 +248,13 @@ class FeatureRestorer:
             tokenizers = [self.get_asset(t) for t in tokenizers]
             num_categories = tuple([len(t.word_index) + 1 for t in tokenizers])
         return num_categories
+
+    # ====================
+    def X_tokenize_input_str(self, input_str):
+
+        tokenizer = self.get_asset('X_TOKENIZER')
+        tokenized = tokenizer.texts_to_sequences([input_str])
+        return tokenized
 
     # ====================
     def Xy_to_output(self, X: list, y: list) -> str:
@@ -282,29 +284,6 @@ class FeatureRestorer:
             y_preview = y_preview + (str(y[i])).ljust(reqd_length)
         print(X_preview)
         print(y_preview)
-
-    # ====================
-    @staticmethod
-    def decode_class_list(tokenizer, encoded: list) -> list:
-
-        index_word = json.loads(tokenizer.get_config()['index_word'])
-        decoded = [index_word[str(x)] for x in encoded]
-        return decoded
-
-    # ====================
-    @staticmethod
-    def char_and_class_to_output_str(X_: str, y_: str) -> str:
-
-        if len(y_) > 0 and y_[0] == 'u':
-            X_ = X_.upper()
-            y_ = y_[1:]
-        return X_ + y_
-
-    # ====================
-    @staticmethod
-    def show_ram_used():
-
-        print(f"RAM used: {psutil.virtual_memory().percent}%")
 
     # ====================
     def datapoint_to_Xy(self, datapoint: str) -> list:
@@ -492,7 +471,13 @@ class FeatureRestorer:
         num_X_categories = self.get_num_categories('X_TOKENIZER')
         X_encoded = to_categorical(tokenized, num_X_categories)
         predicted = self.model.predict(X_encoded)
-        return(predicted)
+        y = np.argmax(predicted, axis=2)[0]
+        y_tokenizer = self.get_asset('Y_TOKENIZER')
+        y_decoded = self.decode_class_list(y_tokenizer, y)
+        output_parts = [self.char_and_class_to_output_str(X_, y_)
+                        for X_, y_ in zip(input_str, y_decoded)]
+        output = ''.join(output_parts)
+        return output
 
     # ====================
     def new_model(self):
@@ -581,3 +566,28 @@ class FeatureRestorer:
                         f"{len(input_str)} non-feature characters."
             raise ValueError(error_msg)
         return self.X_tokenize_input_str(input_str)
+
+    # === STATIC METHODS ===
+
+    # ====================
+    @staticmethod
+    def decode_class_list(tokenizer, encoded: list) -> list:
+
+        index_word = json.loads(tokenizer.get_config()['index_word'])
+        decoded = [index_word[str(x)] for x in encoded]
+        return decoded
+
+    # ====================
+    @staticmethod
+    def char_and_class_to_output_str(X_: str, y_: str) -> str:
+
+        if len(y_) > 0 and y_[0] == 'u':
+            X_ = X_.upper()
+            y_ = y_[1:]
+        return X_ + y_
+
+    # ====================
+    @staticmethod
+    def show_ram_used():
+
+        print(f"RAM used: {psutil.virtual_memory().percent}%")
