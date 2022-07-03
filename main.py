@@ -575,7 +575,8 @@ class FeatureRestorer:
         for fc in self.feature_chars:
             input_str = input_str.replace(fc, '')
         if len(input_str) > self.seq_length:
-            raise ValueError('The sequence length for this feature restorer is',
-                             f"{self.seq_length} and this input string has",
-                             f"{len(input_str)} non-feature characters.")
+            error_msg = 'The sequence length for this feature restorer is ' +\
+                        f"{self.seq_length} and this input string has ", +\
+                        f"{len(input_str)} non-feature characters."
+            raise ValueError(error_msg)
         return self.X_tokenize_input_str(input_str)
