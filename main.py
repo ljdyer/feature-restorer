@@ -376,6 +376,7 @@ class FeatureRestorer:
     def load_model(self, model_name: str):
 
         model_attrs = self.get_model_attrs_from_file(model_name)
+        print(model_attrs)
         self.__dict__.update(model_attrs)
         self.model = keras.models.load_model(self.model_latest_path)
         try:
@@ -404,7 +405,7 @@ class FeatureRestorer:
             if attr.startswith('model_')
         }
         return model_attrs
-  
+
     # ====================
     def train_model(self, epochs: int):
 
