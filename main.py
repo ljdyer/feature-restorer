@@ -6,21 +6,21 @@ Assumptions:
 """
 
 import json
+import logging
 import os
 from random import shuffle
 from typing import Any, List, Union
 
+import keras
 import numpy as np
 import pandas as pd
 import psutil
-import keras
 from keras.layers import LSTM, Bidirectional, Dense, TimeDistributed
 from keras.models import Sequential
 from keras.preprocessing.text import Tokenizer
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.callbacks import ModelCheckpoint
-from tensorflow.keras.callbacks import CSVLogger
 
 from helper import get_tqdm, load_file, mk_dir_if_does_not_exist, save_file
 
@@ -49,6 +49,11 @@ REQUIRED_ATTRS = {
 }
 
 tqdm_ = get_tqdm()
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
+# tensorflow.get_logger().setLevel('ERROR')
+# tensorflow.compat.v1.logging.set_verbosity(tensorflow.compat.v1.logging.ERROR)
 
 
 # ====================
