@@ -434,7 +434,7 @@ class FeatureRestorer:
         self.model_last_epoch += epochs
 
     # ====================
-    def get_model_attrs_from_file(self, model_name: str):
+    def get_model_attrs(self, model_name: str):
 
         model_root_path = self.get_model_root_path(model_name)
         model_attrs_path = os.path.join(model_root_path, MODEL_ATTRS_FNAME)
