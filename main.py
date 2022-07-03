@@ -214,8 +214,11 @@ class FeatureRestorer:
         tokenizer.fit_on_texts(data)
         tokenized = tokenizer.texts_to_sequences(data)
         self.save_asset(tokenized, tokenized_asset_name)
-        print(f'Saved numpy array with shape {tokenized.shape}')
+        print(f'Saved {len(tokenized)} tokenized samples to ',
+              tokenized_asset_name)
         self.save_asset(tokenizer, tokenizer_name)
+        print(f'Saved tokenizer with {self.get_num_categories(tokenizer_name)} ',
+              f'categories to {tokenizer_name}.')
 
     # ====================
     def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
