@@ -468,10 +468,12 @@ class FeatureRestorer:
     def predict(self, input_str: str):
 
         tokenized = self.input_str_to_tokenized(input_str)
+
         num_X_categories = self.get_num_categories('X_TOKENIZER')
         X_encoded = to_categorical(tokenized, num_X_categories)
         predicted = self.model.predict(X_encoded)
         y = np.argmax(predicted, axis=2)[0]
+        print(y)
         y_tokenizer = self.get_asset('Y_TOKENIZER')
         y_decoded = self.decode_class_list(y_tokenizer, y)
         output_parts = [self.char_and_class_to_output_str(X_, y_)
@@ -560,6 +562,8 @@ class FeatureRestorer:
             input_str = input_str.lower()
         for fc in self.feature_chars:
             input_str = input_str.replace(fc, '')
+        print(input_str)
+        print(len(input_str))
         if len(input_str) > self.seq_length:
             error_msg = 'The sequence length for this feature restorer is ' +\
                         f"{self.seq_length} and this input string has " +\
