@@ -10,7 +10,6 @@ import logging
 import os
 from random import shuffle
 from typing import Any, List, Union
-import re
 
 import keras
 import numpy as np
@@ -60,6 +59,8 @@ logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
 # ====================
 class FeatureRestorer:
+
+    # === CLASS INSTANCE ADMIN ===
 
     # ====================
     def __init__(self, attrs: dict = None, load_folder: str = None):
@@ -178,6 +179,8 @@ class FeatureRestorer:
             )
         df = pd.DataFrame(output)
         display_or_print(df)
+
+    # === DATA GENERATION ===
 
     # ====================
     def Xy_from_data(self, data: List[str]):
@@ -482,6 +485,15 @@ class FeatureRestorer:
         return os.path.join(self.models_path, model_name)
 
     # ====================
+    def predict(self, input_str: str):
+
+        tokenized = self.input_str_to_tokenized(input_str)
+        num_X_categories = self.get_num_categories('X_TOKENIZER')
+        X_encoded = to_categorical(tokenized, num_X_categories)
+        predicted = self.model.predict(X_encoded)
+        return(predicted)
+
+    # ====================
     def new_model(self):
 
         units = self.model_units
@@ -556,10 +568,14 @@ class FeatureRestorer:
         self.save_class_attrs()
 
     # ====================
-    def input_str_to_numpy(self, input_str):
+    def input_str_to_tokenized(self, input_str):
 
         if self.capitalisation is True:
             input_str = input_str.lower()
         for fc in self.feature_chars:
             input_str = input_str.replace(fc, '')
+        if len(input_str) > self.seq_length:
+            raise ValueError('The sequence length for this feature restorer is',
+                             f"{self.seq_length} and this input string has",
+                             f"{len(input_str)} non-feature characters.")
         return self.X_tokenize_input_str(input_str)
