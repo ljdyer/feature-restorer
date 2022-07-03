@@ -442,6 +442,12 @@ class FeatureRestorer:
         display_or_print(model_attrs_df)
 
     # ====================
+    def show_model_log_file(self):
+
+        log_file_df = pd.read_csv(self.model_log_file)
+        display_or_print(log_file_df)
+
+    # ====================
     def get_model_root_path(self, model_name: str):
 
         return os.path.join(self.models_path, model_name)
