@@ -40,6 +40,15 @@ def is_running_from_ipython():
 
 
 # ====================
+def display_or_print(obj: Any):
+
+    if is_running_from_ipython():
+        display(obj)
+    else:
+        print(obj)
+
+
+# ====================
 def load_file(fp: str, mmap: bool = False):
     """Load a .pickle file, or .npy file with mmap_mode either True or False"""
 

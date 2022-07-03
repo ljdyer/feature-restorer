@@ -22,7 +22,8 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 
-from helper import get_tqdm, load_file, mk_dir_if_does_not_exist, save_file
+from helper import (display_or_print, get_tqdm, load_file,
+                    mk_dir_if_does_not_exist, save_file)
 
 CLASS_ATTRS_FNAME = 'CLASS_ATTRS.pickle'
 MODEL_ATTRS_FNAME = 'MODEL_ATTRS.pickle'
@@ -175,7 +176,7 @@ class FeatureRestorer:
                 'Exists': True if os.path.exists(fpath) else False}
             )
         df = pd.DataFrame(output)
-        print(df)
+        display_or_print(df)
 
     # ====================
     def Xy_from_data(self, data: List[str]):
@@ -374,12 +375,7 @@ class FeatureRestorer:
     # ====================
     def load_model(self, model_name: str):
 
-        model_root_path = self.get_model_root_path(model_name)
-        model_attrs_path = os.path.join(model_root_path,
-                                        MODEL_ATTRS_FNAME)
-        print(model_attrs_path)
-        model_attrs = load_file()
-        print(model_attrs).keys()
+        model_attrs = self.get_model_attrs_from_file(model_name)
         self.__dict__.update(model_attrs)
         self.model = keras.models.load_model(self.model_latest_path)
         try:
@@ -392,15 +388,23 @@ class FeatureRestorer:
     # ====================
     def save_model_attrs(self):
 
+        model_attrs = self.get_model_attrs()
         model_attrs_path = self.model_attrs_file
-        model_attrs = {attr: value for attr, value in self.__dict__.items()
-                       if attr.startswith('model_')}
         save_file(model_attrs, model_attrs_path)
         print(
             f"Saved {len(model_attrs.keys())} model attributes to ",
             model_attrs_path
         )
 
+    # ====================
+    def get_model_attrs(self):
+
+        model_attrs = {
+            attr: value for attr, value in self.__dict__.items()
+            if attr.startswith('model_')
+        }
+        return model_attrs
+        
     # ====================
     def train_model(self, epochs: int):
 
@@ -427,6 +431,20 @@ class FeatureRestorer:
             epochs=(self.model_last_epoch + epochs),
         )
         self.model_last_epoch += epochs
+
+    # ====================
+    def get_model_attrs_from_file(self, model_name: str):
+
+        model_root_path = self.get_model_root_path(model_name)
+        model_attrs_path = os.path.join(model_root_path, MODEL_ATTRS_FNAME)
+        return load_file(model_attrs_path)
+
+    # ====================
+    def show_model_attrs(self):
+
+        model_attrs = self.show_model_attrs()
+        model_attrs_df = pd.DataFrame(model_attrs)
+        display_or_print(model_attrs_df)
 
     # ====================
     def get_model_root_path(self, model_name: str):
