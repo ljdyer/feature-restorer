@@ -10,6 +10,7 @@ import logging
 import os
 from random import shuffle
 from typing import Any, List, Union
+import re
 
 import keras
 import numpy as np
@@ -547,7 +548,11 @@ class FeatureRestorer:
             train_test_split(keep_idxs, test_size=val_size)
         self.save_class_attrs()
 
-    # # ====================
-    # def input_str_to_numpy(input_str):
+    # ====================
+    def input_str_to_numpy(self, input_str):
 
-    #     if self.
+        if self.capitalisation is True:
+            input_str = input_str.lower()
+        for fc in self.feature_chars:
+            input_str = input_str.replace(fc, '')
+        print(input_str)
