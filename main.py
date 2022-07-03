@@ -438,7 +438,7 @@ class FeatureRestorer:
     def show_model_attrs(self):
 
         model_attrs = self.get_model_attrs()
-        model_attrs_df = pd.DataFrame(model_attrs, orient='index')
+        model_attrs_df = pd.DataFrame.from_dict(model_attrs, orient='index')
         display_or_print(model_attrs_df)
 
     # ====================
