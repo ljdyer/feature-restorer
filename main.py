@@ -370,12 +370,12 @@ class FeatureRestorer:
             'model_attrs_file': model_attrs_file
         })
         self.save_model_attrs()
-        save_file(model_attrs, model_attrs_file)
 
     # ====================
     def load_model(self, model_name: str):
 
         model_root_path = self.get_model_root_path(model_name)
+        print(model_root_path)
         model_attrs = load_file(os.path.join(model_root_path,
                                              MODEL_ATTRS_FNAME))
         print(model_attrs).keys()
@@ -387,6 +387,18 @@ class FeatureRestorer:
         except FileNotFoundError:
             last_epoch = 0
         self.model_last_epoch = last_epoch
+
+    # ====================
+    def save_model_attrs(self):
+
+        model_attrs_path = self.model_attrs_file
+        model_attrs = {attr: value for attr, value in self.__dict__.items()
+                       if attr.startswith('model_')}
+        save_file(model_attrs, model_attrs_path)
+        print(
+            f"Saved {len(model_attrs.keys())} model attributes to ",
+            model_attrs_path
+        )
 
     # ====================
     def train_model(self, epochs: int):
@@ -414,18 +426,6 @@ class FeatureRestorer:
             epochs=(self.model_last_epoch + epochs),
         )
         self.model_last_epoch += epochs
-
-    # ====================
-    def save_model_attrs(self):
-
-        model_attrs_path = self.model_attrs_file
-        model_attrs = {attr: value for attr, value in self.__dict__.items()
-                       if attr.startswith('model_')}
-        save_file(model_attrs, model_attrs_path)
-        print(
-            f"Saved {len(model_attrs.keys())} model attributes to ",
-            model_attrs_path
-        )
 
     # ====================
     def get_model_root_path(self, model_name: str):
