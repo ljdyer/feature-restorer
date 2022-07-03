@@ -225,7 +225,7 @@ class FeatureRestorer:
     def X_tokenize_input_str(self, input_str):
 
         tokenizer = self.get_asset('X_TOKENIZER')
-        tokenized = tokenizer.texts_to_sequences(input_str)
+        tokenized = tokenizer.texts_to_sequences([input_str])
         return tokenized
 
     # ====================
