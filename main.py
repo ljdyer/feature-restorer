@@ -468,13 +468,18 @@ class FeatureRestorer:
     def predict(self, raw_str: str):
 
         input_str = self.raw_str_to_input_str(raw_str)
-        print(input_str)
+        if len(input_str) < self.seq_length:
+            # ⳨ chosen to trigger OOV. Change if restoring features for Coptic
+            # language.
+            print("Warning: length of input string is less than model sequence", 
+                  "length")
+            input_str = \
+                input_str + ['⳨' for _ in range(self.seq_length - len(input_str)]
         tokenized = self.input_str_to_tokenized(input_str)
         num_X_categories = self.get_num_categories('X_TOKENIZER')
         X_encoded = to_categorical(tokenized, num_X_categories)
         predicted = self.model.predict(X_encoded)
         y = np.argmax(predicted, axis=2)[0]
-        print(y)
         y_tokenizer = self.get_asset('Y_TOKENIZER')
         y_decoded = self.decode_class_list(y_tokenizer, y)
         output_parts = [self.char_and_class_to_output_str(X_, y_)
@@ -498,9 +503,6 @@ class FeatureRestorer:
         output = ' '.join(all_words)
         # Add any text remaining in 'prefix'
         if prefix:
-            # ⳨ chosen to trigger OOV. Change if restoring features for Coptic
-            # language.
-            prefix = prefix + ['⳨' for _ in range(self.seq_length) - prefix]
             output = output + ' ' + self.predict(prefix).strip()
         return output
 
