@@ -348,28 +348,22 @@ class FeatureRestorer:
         return ''.join(X), y
 
     # ====================
-    def add_model(self, model_name: str, model_attrs: dict):
+    def add_model(self, model_attrs: dict):
 
-        self.__dict__.update(model_attrs)
-        model = self.new_model()
-        model_root_path = self.get_model_root_path(model_name)
-        if os.path.exists(model_root_path):
+        model_name = model_attrs['model_name']
+        if os.path.exists(self.get_model_root_path(model_name)):
             raise ValueError('A model with this name already exists!')
-        model_latest_path = os.path.join(model_root_path, 'latest')
-        model.save(model_latest_path)
-        model_checkpoints_folder = os.path.join(model_root_path, 'checkpoints')
-        model_log_file = os.path.join(model_root_path, 'log.csv')
-        model_attrs_file = os.path.join(model_root_path, MODEL_ATTRS_FNAME)
+        self.__dict__.update(model_attrs)
+        self.model = self.new_model()
+        self.model_root_path = self.get_model_root_path(self.model_name)
+        self.model_latest_path = os.path.join(self.model_root_path, 'latest')
+        self.model.save(self.model_latest_path)
+        self.model_checkpoints_folder = \
+            os.path.join(self.model_root_path, 'checkpoints')
+        self.model_log_file = os.path.join(self.model_root_path, 'log.csv')
+        self.model_attrs_file = \
+            os.path.join(self.model_root_path, MODEL_ATTRS_FNAME)
         self.train_val_split()
-        self.__dict__.update({
-            'model_name': model_name,
-            'model_last_epoch': 0,
-            'model_root_path': model_root_path,
-            'model_latest_path': model_latest_path,
-            'model_checkpoints_folder': model_checkpoints_folder,
-            'model_log_file': model_log_file,
-            'model_attrs_file': model_attrs_file
-        })
         self.save_model_attrs()
 
     # ====================
