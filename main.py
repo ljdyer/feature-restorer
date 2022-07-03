@@ -215,7 +215,7 @@ class FeatureRestorer:
         tokenized = tokenizer.texts_to_sequences(data)
         self.save_asset(tokenized, tokenized_asset_name)
         print(f'Saved {len(tokenized)} tokenized samples to ',
-              tokenized_asset_name)
+              f'{tokenized_asset_name}.')
         self.save_asset(tokenizer, tokenizer_name)
         print(f'Saved tokenizer with {self.get_num_categories(tokenizer_name)} ',
               f'categories to {tokenizer_name}.')
@@ -228,6 +228,8 @@ class FeatureRestorer:
         data_pickle = self.get_asset(pickle_asset_name)
         data_np = np.array(data_pickle)
         self.save_asset(data_np, numpy_asset_name)
+        print(f'Saved numpy array with shape {str(data_np.shape)} to ',
+              f'{numpy_asset_name}.')
 
     # ====================
     def get_num_categories(self, tokenizers: Union[List[str], str]):
