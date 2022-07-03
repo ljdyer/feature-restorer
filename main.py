@@ -375,7 +375,7 @@ class FeatureRestorer:
         self.model = keras.models.load_model(self.model_latest_path)
         try:
             log_df = pd.read_csv(self.model_log_file)
-            last_epoch = max([int(e) for e in log_df['epoch'].to_list])
+            last_epoch = max([int(e) for e in log_df['epoch'].to_list()])
         except FileNotFoundError:
             last_epoch = 0
         self.model_last_epoch = last_epoch
