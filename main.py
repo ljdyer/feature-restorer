@@ -406,6 +406,15 @@ class FeatureRestorer:
         return model_attrs
 
     # ====================
+    def get_class_attrs(self):
+
+        class_attrs = {
+            attr: value for attr, value in self.__dict__.items()
+            if not attr.startswith('model_')
+        }
+        return class_attrs
+
+    # ====================
     def train_model(self, epochs: int):
 
         num_train = len(self.train_or_val_idxs('TRAIN'))
@@ -445,6 +454,13 @@ class FeatureRestorer:
         model_attrs = self.get_model_attrs()
         model_attrs_df = pd.DataFrame.from_dict(model_attrs, orient='index')
         display_or_print(model_attrs_df)
+
+    # ====================
+    def show_class_attrs(self):
+
+        class_attrs = self.get_class_attrs()
+        class_attrs_df = pd.DataFrame.from_dict(class_attrs, orient='index')
+        display_or_print(class_attrs_df)
 
     # ====================
     def show_model_log_file(self):
@@ -530,3 +546,8 @@ class FeatureRestorer:
         self.model_train_idxs, self.model_val_idxs = \
             train_test_split(keep_idxs, test_size=val_size)
         self.save_class_attrs()
+
+    # # ====================
+    # def input_str_to_numpy(input_str):
+
+    #     if self.
