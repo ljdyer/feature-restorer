@@ -214,7 +214,8 @@ class FeatureRestorer:
         asset, and save both the tokenizer and the tokenized data"""
 
         data = self.get_asset(raw_asset_name)
-        tokenizer = Tokenizer(char_level=char_level)
+        tokenizer = Tokenizer(
+            oov_token='OOV', filters='', char_level=char_level)
         tokenizer.fit_on_texts(data)
         tokenized = tokenizer.texts_to_sequences(data)
         self.save_asset(tokenized, tokenized_asset_name)
