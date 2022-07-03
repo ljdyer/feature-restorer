@@ -483,6 +483,27 @@ class FeatureRestorer:
         return output
 
     # ====================
+    def predict_doc(self, text: str) -> list:
+
+        all_words = []
+        prefix = ''
+        while text:
+            restore_until = self.seq_length - len(prefix)
+            text_to_restore = prefix + text[:restore_until]
+            text = text[restore_until:]
+            chunk_restored = self.predict(text_to_restore).split()
+            prefix = ''.join(chunk_restored[-5:])
+            all_words.extend(chunk_restored[:-5])
+        output = ' '.join(all_words)
+        # Add any text remaining in 'prefix'
+        if prefix:
+            # ⳨ chosen to trigger OOV. Change if restoring features for Coptic
+            # language.
+            prefix = prefix + ['⳨' for _ in range(self.seq_length) - prefix]
+            output = output + ' ' + self.predict(prefix).strip()
+        return output
+
+    # ====================
     def new_model(self):
 
         units = self.model_units
