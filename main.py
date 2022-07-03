@@ -201,6 +201,7 @@ class FeatureRestorer:
                 y_train.extend(y)
         self.save_asset(X_train, 'X_RAW')
         self.save_asset(y_train, 'Y_RAW')
+        print(f"Saved {len(X_train)} samples in 'X_RAW' and 'Y_RAW'")
 
     # ====================
     def tokenize(self, tokenizer_name: str, raw_asset_name: str,
@@ -414,7 +415,7 @@ class FeatureRestorer:
             filepath=self.model_latest_path,
             save_freq='epoch'
         )
-        csv_logger = CSVLogger(self.model_log_file)
+        csv_logger = CSVLogger(self.model_log_file, append=True)
         self.model.fit(
             self.data_loader('TRAIN', batch_size=batch_size),
             steps_per_epoch=(num_train // batch_size),
