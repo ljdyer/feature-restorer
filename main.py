@@ -375,9 +375,10 @@ class FeatureRestorer:
     def load_model(self, model_name: str):
 
         model_root_path = self.get_model_root_path(model_name)
-        print(model_root_path)
-        model_attrs = load_file(os.path.join(model_root_path,
-                                             MODEL_ATTRS_FNAME))
+        model_attrs_path = os.path.join(model_root_path,
+                                        MODEL_ATTRS_FNAME)
+        print(model_attrs_path)
+        model_attrs = load_file()
         print(model_attrs).keys()
         self.__dict__.update(model_attrs)
         self.model = keras.models.load_model(self.model_latest_path)
