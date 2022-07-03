@@ -465,10 +465,11 @@ class FeatureRestorer:
         return os.path.join(self.models_path, model_name)
 
     # ====================
-    def predict(self, input_str: str):
+    def predict(self, raw_str: str):
 
+        input_str = self.raw_str_to_input_str(raw_str)
+        print(input_str)
         tokenized = self.input_str_to_tokenized(input_str)
-
         num_X_categories = self.get_num_categories('X_TOKENIZER')
         X_encoded = to_categorical(tokenized, num_X_categories)
         predicted = self.model.predict(X_encoded)
@@ -558,18 +559,23 @@ class FeatureRestorer:
     # ====================
     def input_str_to_tokenized(self, input_str):
 
-        if self.capitalisation is True:
-            input_str = input_str.lower()
-        for fc in self.feature_chars:
-            input_str = input_str.replace(fc, '')
-        print(input_str)
-        print(len(input_str))
         if len(input_str) > self.seq_length:
             error_msg = 'The sequence length for this feature restorer is ' +\
                         f"{self.seq_length} and this input string has " +\
                         f"{len(input_str)} non-feature characters."
             raise ValueError(error_msg)
         return self.X_tokenize_input_str(input_str)
+
+    # ====================
+    def raw_str_to_input_str(self, raw_str):
+
+        if self.capitalisation is True:
+            input_str = raw_str.lower()
+        else:
+            input_str = raw_str
+        for fc in self.feature_chars:
+            input_str = input_str.replace(fc, '')
+        return input_str
 
     # === STATIC METHODS ===
 
