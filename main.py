@@ -483,8 +483,9 @@ class FeatureRestorer:
         return output
 
     # ====================
-    def predict_doc(self, text: str) -> list:
+    def predict_doc(self, raw_str: str) -> list:
 
+        text = self.raw_str_to_input_str(raw_str)
         all_words = []
         prefix = ''
         while text:
