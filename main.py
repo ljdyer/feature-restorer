@@ -222,6 +222,13 @@ class FeatureRestorer:
               f'categories to {tokenizer_name}.')
 
     # ====================
+    def X_tokenize_input_str(self, input_str):
+
+        tokenizer = self.get_asset_name('X_TOKENIZE')
+        tokenized = tokenizer.texts_to_sequences(input_str)
+        return tokenized
+
+    # ====================
     def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
         """Open a .pickle asset, convert to a numpy array, and save as a .npy
         asset"""
@@ -555,4 +562,4 @@ class FeatureRestorer:
             input_str = input_str.lower()
         for fc in self.feature_chars:
             input_str = input_str.replace(fc, '')
-        print(input_str)
+        return self.X_tokenize_input_str(input_str)
