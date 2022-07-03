@@ -376,7 +376,6 @@ class FeatureRestorer:
     def load_model(self, model_name: str):
 
         model_attrs = self.get_model_attrs_from_file(model_name)
-        print(model_attrs)
         self.__dict__.update(model_attrs)
         self.model = keras.models.load_model(self.model_latest_path)
         try:
@@ -393,7 +392,7 @@ class FeatureRestorer:
         model_attrs_path = self.model_attrs_file
         save_file(model_attrs, model_attrs_path)
         print(
-            f"Saved {len(model_attrs.keys())} model attributes to ",
+            f"Saved {len(model_attrs.keys())} model attributes to",
             model_attrs_path
         )
 
