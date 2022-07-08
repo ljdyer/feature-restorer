@@ -49,6 +49,32 @@ REQUIRED_ATTRS = {
     'one_of_each': bool
 }
 
+# General messages
+SAVED_RAW_SAMPLES = "Saved {num_samples} samples in 'X_RAW' and 'Y_RAW'"
+SAVED_TOKENIZER = """Saved tokenizer with {num_categories} \
+categories to {tokenizer_name}."""
+SAVED_NUMPY_ARRAY = """Saved numpy array with shape {shape} to \
+{numpy_asset_name}."""
+SAVED_TOKENIZED_SAMPLES = """Saved {num_samples} tokenized samples to \
+{tokenized_asset_name}."""
+SAVED_MODEL_ATTRS = "Saved {num_attrs} model attributes to {model_attrs_path}"
+RAM_IN_USE = "RAM currently in use: {ram_in_use}%"
+# Warning messages
+WARNING_INPUT_STR_TOO_SHORT = """Warning: length of input string is less than model \
+sequence length."""
+# Error messages
+ERROR_INPUT_STR_TOO_LONG = """The sequence length for this feature restorer is \
+{seq_length} and this input string has {len_input} non-feature characters."""
+ERROR_TRAIN_OR_VAL = 'Parameter train_or_val must be "TRAIN" or "VAL".'
+ERROR_ATTRS_AND_LOAD = 'You cannot specify both attrs and load_folder.'
+ERROR_MISSING_ATTR = 'attrs must have key {reqd_attr}.'
+ERROR_REQD_ATTR_TYPE = "{reqd_attr} should have type {reqd_type}."
+ERROR_SPECIFY_ATTRS_OR_LOAD_FOLDER = """You must specify either attrs or \
+load_folder."""
+ERROR_SPACES_FALSE_NOT_IMPLEMENTED = 'Not implemented yet when spaces=False.'
+ERROR_ONE_OF_EACH_FALSE_NOT_IMPLEMENTED = """Not implemented yet when \
+one_of_each=False."""
+
 tqdm_ = get_tqdm()
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
@@ -73,13 +99,13 @@ class FeatureRestorer:
         load folder."""
 
         if attrs is not None and load_folder is not None:
-            raise ValueError('You cannot specify both attrs and load_folder.')
+            raise ValueError(ERROR_ATTRS_AND_LOAD)
         elif attrs is not None:
             self.init_from_attrs(attrs)
         elif load_folder is not None:
             self.init_from_load_folder(load_folder)
         else:
-            raise ValueError('You must specify either attrs or load_folder.')
+            raise ValueError(ERROR_SPECIFY_ATTRS_OR_LOAD_FOLDER)
 
     # ====================
     def init_from_attrs(self, attrs: dict):
@@ -89,10 +115,14 @@ class FeatureRestorer:
             try:
                 val = attrs[reqd_attr]
                 if not isinstance(val, reqd_type):
-                    raise ValueError(
-                        f'{reqd_attr} should have type {str(reqd_attr)}')
+                    raise ValueError(ERROR_REQD_ATTR_TYPE.format(
+                        reqd_attr=reqd_attr,
+                        reqd_type=str(reqd_type)
+                    ))
             except KeyError:
-                raise ValueError(f'attrs must have key {reqd_attr}.')
+                raise ValueError(ERROR_MISSING_ATTR.format(
+                    reqd_attr=reqd_attr
+                ))
         self.__dict__.update(attrs)
         mk_dir_if_does_not_exist(self.root_folder)
         self.assets = ASSETS
@@ -205,7 +235,7 @@ class FeatureRestorer:
                 y_train.extend(y)
         self.save_asset(X_train, 'X_RAW')
         self.save_asset(y_train, 'Y_RAW')
-        print(f"Saved {len(X_train)} samples in 'X_RAW' and 'Y_RAW'")
+        print(SAVED_RAW_SAMPLES.format(num_samples=len(X_train)))
 
     # ====================
     def tokenize(self, tokenizer_name: str, raw_asset_name: str,
@@ -219,11 +249,15 @@ class FeatureRestorer:
         tokenizer.fit_on_texts(data)
         tokenized = tokenizer.texts_to_sequences(data)
         self.save_asset(tokenized, tokenized_asset_name)
-        print(f'Saved {len(tokenized)} tokenized samples to',
-              f'{tokenized_asset_name}.')
+        print(SAVED_TOKENIZED_SAMPLES.format(
+            num_samples=len(tokenized),
+            tokenized_asset_name=tokenized_asset_name
+        ))
         self.save_asset(tokenizer, tokenizer_name)
-        print(f'Saved tokenizer with {self.get_num_categories(tokenizer_name)}',
-              f'categories to {tokenizer_name}.')
+        print(SAVED_TOKENIZER.format(
+            num_categories=self.get_num_categories(tokenizer_name),
+            tokenizer_name=tokenizer_name
+        ))
 
     # ====================
     def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
@@ -233,8 +267,10 @@ class FeatureRestorer:
         data_pickle = self.get_asset(pickle_asset_name)
         data_np = np.array(data_pickle)
         self.save_asset(data_np, numpy_asset_name)
-        print(f'Saved numpy array with shape {str(data_np.shape)} to',
-              f'{numpy_asset_name}.')
+        print(SAVED_NUMPY_ARRAY.format(
+            shape=str(data_np.shape),
+            numpy_asset_name=numpy_asset_name
+        ))
 
     # === PREDICTION ===
 
@@ -300,7 +336,7 @@ class FeatureRestorer:
                     X.append(X_)
                     y.append(y_)
         else:
-            raise ValueError('Not implemented yet when spaces=False.')
+            raise ValueError(ERROR_SPACES_FALSE_NOT_IMPLEMENTED)
         return X, y
 
     # ====================
@@ -338,7 +374,7 @@ class FeatureRestorer:
                          if f in feature_chars_encountered]
                     )
             else:
-                raise ValueError('Not implemented yet when one_of_each=False.')
+                raise ValueError(ERROR_ONE_OF_EACH_FALSE_NOT_IMPLEMENTED)
             y.append(this_class)
         assert len(X) == self.seq_length
         assert len(y) == self.seq_length
@@ -382,10 +418,10 @@ class FeatureRestorer:
         model_attrs = self.get_model_attrs()
         model_attrs_path = self.model_attrs_file
         save_file(model_attrs, model_attrs_path)
-        print(
-            f"Saved {len(model_attrs.keys())} model attributes to",
-            model_attrs_path
-        )
+        print(SAVED_MODEL_ATTRS.format(
+            num_attrs=len(model_attrs.keys()),
+            model_attrs_path=model_attrs_path
+        ))
 
     # ====================
     def get_model_attrs(self):
@@ -471,8 +507,7 @@ class FeatureRestorer:
         if len(input_str) < self.seq_length:
             # ⳨ chosen to trigger OOV. Change if restoring features for Coptic
             # language.
-            print("Warning: length of input string is less than model sequence", 
-                  "length")
+            print(WARNING_INPUT_STR_TOO_SHORT)
             input_str = input_str + ('⳨' * (self.seq_length - len(input_str)))
         tokenized = self.input_str_to_tokenized(input_str)
         num_X_categories = self.get_num_categories('X_TOKENIZER')
@@ -561,7 +596,7 @@ class FeatureRestorer:
         elif train_or_val == 'VAL':
             return self.model_val_idxs
         else:
-            raise RuntimeError('train_or_val must be "TRAIN" or "VAL".')
+            raise RuntimeError(ERROR_TRAIN_OR_VAL)
 
     # ====================
     def train_val_split(self):
@@ -583,9 +618,10 @@ class FeatureRestorer:
     def input_str_to_tokenized(self, input_str):
 
         if len(input_str) > self.seq_length:
-            error_msg = 'The sequence length for this feature restorer is ' +\
-                        f"{self.seq_length} and this input string has " +\
-                        f"{len(input_str)} non-feature characters."
+            error_msg = ERROR_INPUT_STR_TOO_LONG.format(
+                seq_len=self.seq_length,
+                len_input_len=len(input_str)
+            )
             raise ValueError(error_msg)
         return self.X_tokenize_input_str(input_str)
 
@@ -623,4 +659,4 @@ class FeatureRestorer:
     @staticmethod
     def show_ram_used():
 
-        print(f"RAM used: {psutil.virtual_memory().percent}%")
+        print(RAM_IN_USE.format(psutil.virtual_memory().percent))
