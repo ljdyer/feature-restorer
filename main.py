@@ -157,8 +157,10 @@ class FeatureRestorer:
 
     # ====================
     def set_models_path(self):
-        """Set feature_chars attribute based on other_features and spaces
-        attributes"""
+        """Set models_path attribute
+
+        Path for models is a directory named 'models' below the FeatureRestorer
+        root folder"""
 
         self.models_path = os.path.join(self.root_folder, 'models')
         mk_dir_if_does_not_exist(self.models_path)
