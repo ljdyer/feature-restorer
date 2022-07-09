@@ -384,6 +384,7 @@ class FeatureRestorer:
         X = []
         y = []
         start_char = 0
+        char_shift = self.char_shift
         while start_char < len(datapoint):
             substr = datapoint[start_char:]
             Xy = self.substr_to_Xy(substr)
@@ -391,6 +392,7 @@ class FeatureRestorer:
                 X_, y_ = Xy
                 X.append(X_)
                 y.append(y_)
+            start_char += char_shift
         return X, y
 
     # ====================
