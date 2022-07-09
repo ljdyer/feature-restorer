@@ -513,7 +513,10 @@ class FeatureRestorer:
             restored = self.Xy_to_output(X[idx], y[idx])
             outputs.append((f"{idx:,}", restored))
         outputs_df = pd.DataFrame(outputs, columns=['Index', 'Output'])
+        prev_colwidth = pd.options.display.max_colwidth
+        pd.set_option('display.max_colwidth', None)
         display_or_print(outputs_df)
+        pd.set_option('display.max_colwidth', prev_colwidth)
 
     # === PREPROCESSING ===
 
