@@ -8,8 +8,8 @@ Assumptions:
 import json
 import logging
 import os
-from random import shuffle
-from typing import Any, List, Union
+from random import sample, shuffle
+from typing import Any, List, Tuple, Union
 
 import keras
 import numpy as np
@@ -24,6 +24,9 @@ from tensorflow.keras.utils import to_categorical
 
 from helper import (display_or_print, get_tqdm, load_file,
                     mk_dir_if_does_not_exist, save_file)
+
+Str_or_List_of_Str = Union[List[str], str]
+Int_or_Tuple_of_Int = Union[int, Tuple[int]]
 
 CLASS_ATTRS_FNAME = 'CLASS_ATTRS.pickle'
 MODEL_ATTRS_FNAME = 'MODEL_ATTRS.pickle'
@@ -48,6 +51,9 @@ REQUIRED_ATTRS = {
     'seq_length': int,
     'one_of_each': bool
 }
+REQUIRED_ATTRS_IF_SPACES_FALSE = {
+    'char_shift': int
+}
 
 # General messages
 SAVED_RAW_SAMPLES = "Saved {num_samples} samples in 'X_RAW' and 'Y_RAW'"
@@ -59,9 +65,18 @@ SAVED_TOKENIZED_SAMPLES = """Saved {num_samples} tokenized samples to \
 {tokenized_asset_name}."""
 SAVED_MODEL_ATTRS = "Saved {num_attrs} model attributes to {model_attrs_path}"
 RAM_IN_USE = "RAM currently in use: {ram_in_use}%"
+MESSAGE_GENERATING_RAW_SAMPLES = "Generating raw samples from data provided..."
+MESSAGE_TOKENIZING_INPUTS = "Tokenizing model inputs (X)..."
+MESSAGE_TOKENIZING_OUTPUTS = "Tokenizing model outputs (y)..."
+MESSAGE_CONVERTING_INPUTS_TO_NUMPY = """Converting model inputs (X) to numpy \
+format..."""
+MESSAGE_CONVERTING_OUTPUTS_TO_NUMPY = """Converting model outputs (y) to numpy \
+format..."""
+
 # Warning messages
 WARNING_INPUT_STR_TOO_SHORT = """Warning: length of input string is less than model \
 sequence length."""
+
 # Error messages
 ERROR_INPUT_STR_TOO_LONG = """The sequence length for this feature restorer is \
 {seq_length} and this input string has {len_input} non-feature characters."""
@@ -111,6 +126,19 @@ class FeatureRestorer:
     def init_from_attrs(self, attrs: dict):
         """Initialize a new instance from a dictionary of attributes"""
 
+        self.check_reqd_attrs_provided(attrs)
+        self.__dict__.update(attrs)
+        mk_dir_if_does_not_exist(self.root_folder)
+        self.assets = ASSETS
+        self.set_models_path()
+        self.set_feature_chars()
+        self.save_class_attrs()
+
+    # ====================
+    def check_reqd_attrs_provided(self, attrs: dict):
+        """Check presence and type of required attributes in dictionary
+        of attributes"""
+
         for reqd_attr, reqd_type in REQUIRED_ATTRS.items():
             try:
                 val = attrs[reqd_attr]
@@ -123,12 +151,20 @@ class FeatureRestorer:
                 raise ValueError(ERROR_MISSING_ATTR.format(
                     reqd_attr=reqd_attr
                 ))
-        self.__dict__.update(attrs)
-        mk_dir_if_does_not_exist(self.root_folder)
-        self.assets = ASSETS
-        self.set_models_path()
-        self.set_feature_chars()
-        self.save_class_attrs()
+        if attrs['spaces'] is False:
+            for reqd_attr, reqd_type in \
+             REQUIRED_ATTRS_IF_SPACES_FALSE.items():
+                try:
+                    val = attrs[reqd_attr]
+                    if not isinstance(val, reqd_type):
+                        raise ValueError(ERROR_REQD_ATTR_TYPE.format(
+                            reqd_attr=reqd_attr,
+                            reqd_type=str(reqd_type)
+                        ))
+                except KeyError:
+                    raise ValueError(ERROR_MISSING_ATTR.format(
+                        reqd_attr=reqd_attr
+                    ))
 
     # ====================
     def save_class_attrs(self):
@@ -197,7 +233,7 @@ class FeatureRestorer:
 
     # ====================
     def do_assets_exist(self):
-        """Print a table of asset names, file names, and whether each file
+        """Output a table of asset names, file names, and whether each file
         exists in the root folder."""
 
         output = []
@@ -212,137 +248,155 @@ class FeatureRestorer:
         df = pd.DataFrame(output)
         display_or_print(df)
 
+    # ====================
+    def show_class_attrs(self):
+        """Output a table of all the attributes of the class instance that do
+        not refer to the model that is currently loaded"""
+
+        class_attrs = self.get_class_attrs()
+        class_attrs_df = pd.DataFrame.from_dict(class_attrs, orient='index')
+        display_or_print(class_attrs_df)
+
+    # ====================
+    def get_class_attrs(self):
+        """Get the attributes of the class instance that do not refer to the
+        model that is currently loaded.
+
+        Names of model-specific attributes begin with 'model_', so get all
+        attributes whose names do not begin with 'model_'"""
+
+        class_attrs = {
+            attr: value for attr, value in self.__dict__.items()
+            if not attr.startswith('model_')
+        }
+        return class_attrs
+
+    # ====================
+    def show_model_attrs(self):
+        """Output a table of all the attributes of the class instance that refer
+        to the model that is currently loaded"""
+
+        model_attrs = self.get_model_attrs()
+        model_attrs_df = pd.DataFrame.from_dict(model_attrs, orient='index')
+        display_or_print(model_attrs_df)
+
+    # ====================
+    def get_model_attrs(self):
+        """Get the attributes of the class instance that refer to the model that
+        is currently loaded.
+
+        Names of these attributes begin with 'model_'"""
+
+        model_attrs = {
+            attr: value for attr, value in self.__dict__.items()
+            if attr.startswith('model_')
+        }
+        return model_attrs
+
     # === DATA GENERATION ===
 
     # ====================
-    def Xy_from_data(self, data: List[str]):
-        """Get raw X and y lists from a list of strings
+    def load_data(self, data: List[str]):
+        """Convert provided data into form required for model training"""
+
+        self.generate_raw(data)
+        self.show_ram_used()
+        print()
+        self.tokenize_inputs()
+        self.show_ram_used()
+        print()
+        self.tokenize_outputs()
+        self.show_ram_used()
+        print()
+        self.convert_inputs_to_numpy()
+        self.show_ram_used()
+        print()
+        self.convert_outputs_to_numpy()
+        self.show_ram_used()
+        print()
+
+    # ====================
+    def generate_raw(self, data: List[str]):
+        """Generate lists of raw X and y values to use as samples from datapoints
+        (documents) in the data provided.
 
         Save in 'X_RAW' and 'Y_RAW' assets"""
 
-        X_train = []
-        y_train = []
+        print(MESSAGE_GENERATING_RAW_SAMPLES)
+        X = []
+        y = []
         pbar = tqdm_(range(len(data)))
         for _ in pbar:
             pbar.set_postfix({
                 'ram_usage': f"{psutil.virtual_memory().percent}%",
-                'num_samples': len(X_train),
+                'num_samples': len(X),
                 'estimated_num_samples':
-                    len(X_train) * (len(pbar) / (pbar.n + 1))
+                    len(X) * (len(pbar) / (pbar.n + 1))
             })
             Xy = self.datapoint_to_Xy(data.pop(0))
             if Xy is not None:
-                X, y = Xy
-                X_train.extend(X)
-                y_train.extend(y)
-        self.save_asset(X_train, 'X_RAW')
-        self.save_asset(y_train, 'Y_RAW')
-        print(SAVED_RAW_SAMPLES.format(num_samples=len(X_train)))
-
-    # ====================
-    def tokenize(self, tokenizer_name: str, raw_asset_name: str,
-                 tokenized_asset_name: str, char_level: bool):
-        """Open an asset, create and fit a Keras tokenizer, tokenize the
-        asset, and save both the tokenizer and the tokenized data"""
-
-        data = self.get_asset(raw_asset_name)
-        tokenizer = Tokenizer(
-            oov_token='OOV', filters='', char_level=char_level)
-        tokenizer.fit_on_texts(data)
-        tokenized = tokenizer.texts_to_sequences(data)
-        self.save_asset(tokenized, tokenized_asset_name)
-        print(SAVED_TOKENIZED_SAMPLES.format(
-            num_samples=len(tokenized),
-            tokenized_asset_name=tokenized_asset_name
-        ))
-        self.save_asset(tokenizer, tokenizer_name)
-        print(SAVED_TOKENIZER.format(
-            num_categories=self.get_num_categories(tokenizer_name),
-            tokenizer_name=tokenizer_name
-        ))
-
-    # ====================
-    def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
-        """Open a .pickle asset, convert to a numpy array, and save as a .npy
-        asset"""
-
-        data_pickle = self.get_asset(pickle_asset_name)
-        data_np = np.array(data_pickle)
-        self.save_asset(data_np, numpy_asset_name)
-        print(SAVED_NUMPY_ARRAY.format(
-            shape=str(data_np.shape),
-            numpy_asset_name=numpy_asset_name
-        ))
-
-    # === PREDICTION ===
-
-    # ====================
-    def get_num_categories(self, tokenizers: Union[List[str], str]):
-
-        if isinstance(tokenizers, str):
-            tokenizer = self.get_asset(tokenizers)
-            num_categories = len(tokenizer.word_index) + 1
-        elif isinstance(tokenizers, list):
-            tokenizers = [self.get_asset(t) for t in tokenizers]
-            num_categories = tuple([len(t.word_index) + 1 for t in tokenizers])
-        return num_categories
-
-    # ====================
-    def X_tokenize_input_str(self, input_str):
-
-        tokenizer = self.get_asset('X_TOKENIZER')
-        tokenized = tokenizer.texts_to_sequences([input_str])
-        return tokenized
-
-    # ====================
-    def Xy_to_output(self, X: list, y: list) -> str:
-
-        X_tokenizer = self.get_asset('X_TOKENIZER')
-        X_decoded = X_tokenizer.sequences_to_texts([X])[0].replace(' ', '')
-        y_tokenizer = self.get_asset('Y_TOKENIZER')
-        y_decoded = self.decode_class_list(y_tokenizer, y)
-        output_parts = [self.char_and_class_to_output_str(X_, y_)
-                        for X_, y_ in zip(X_decoded, y_decoded)]
-        output = ''.join(output_parts)
-        return output
-
-    # ====================
-    def preview_Xy(self, X: list, y: list):
-
-        X_tokenizer = self.get_asset('X_TOKENIZER')
-        X = X_tokenizer.sequences_to_texts([X])[0].replace(' ', '')
-        y_tokenizer = self.get_asset('Y_TOKENIZER')
-        y = self.decode_class_list(y_tokenizer, y)
-        X_preview = ''
-        y_preview = ''
-        assert len(X) > 10
-        for i in range(len(X)):
-            reqd_length = max(len(X[i]), len(y[i])) + 1
-            X_preview = X_preview + (str(X[i])).ljust(reqd_length)
-            y_preview = y_preview + (str(y[i])).ljust(reqd_length)
-        print(X_preview)
-        print(y_preview)
+                X_, y_ = Xy
+                X.extend(X_)
+                y.extend(y_)
+        self.save_asset(X, 'X_RAW')
+        self.save_asset(y, 'Y_RAW')
+        print(SAVED_RAW_SAMPLES.format(num_samples=len(X)))
 
     # ====================
     def datapoint_to_Xy(self, datapoint: str) -> list:
+        """Given a datapoint (i.e. a document in the data provided), generate a
+        lists of X and y values for training."""
 
-        if self.spaces:
-            X = []
-            y = []
-            words = datapoint.split()
-            substrs = [' '.join(words[i:]) for i in range(len(words))]
-            for substr in substrs:
-                Xy = self.substr_to_Xy(substr)
-                if Xy is not None:
-                    X_, y_ = Xy
-                    X.append(X_)
-                    y.append(y_)
+        if self.spaces is True:
+            X, y = self.datapoint_to_Xy_spaces_true(datapoint)
         else:
-            raise ValueError(ERROR_SPACES_FALSE_NOT_IMPLEMENTED)
+            X, y = self.datapoint_to_Xy_spaces_false(datapoint)
+        return X, y
+
+    # ====================
+    def datapoint_to_Xy_spaces_true(self, datapoint: str) -> list:
+        """Generate X and y values from a datapoint (document) in the case that
+        self.spaces=True.
+
+        Generate a sample beginning at the start of each word (after each
+        space)."""
+
+        X = []
+        y = []
+        words = datapoint.split()
+        substrs = [' '.join(words[i:]) for i in range(len(words))]
+        for substr in substrs:
+            Xy = self.substr_to_Xy(substr)
+            if Xy is not None:
+                X_, y_ = Xy
+                X.append(X_)
+                y.append(y_)
+        return X, y
+
+    # ====================
+    def datapoint_to_Xy_spaces_false(self, datapoint: str) -> list:
+        """Generate X and y values from a datapoint (document) in the case that
+        self.spaces=False.
+
+        Use a sliding window beginning from the first character and shifting
+        self.char_shift characters at each step."""
+
+        X = []
+        y = []
+        start_char = 0
+        while start_char < len(datapoint):
+            substr = datapoint[start_char:]
+            Xy = self.substr_to_Xy(substr)
+            if Xy is not None:
+                X_, y_ = Xy
+                X.append(X_)
+                y.append(y_)
         return X, y
 
     # ====================
     def substr_to_Xy(self, substr: str) -> tuple:
+        """Generate X and y values from a substring of a datapoint
+        (document)"""
 
         X = []
         y = []
@@ -381,6 +435,215 @@ class FeatureRestorer:
         assert len(X) == self.seq_length
         assert len(y) == self.seq_length
         return ''.join(X), y
+
+    # ====================
+    def tokenize_inputs(self):
+        """Tokenize inputs (X)"""
+
+        print(MESSAGE_TOKENIZING_INPUTS)
+        self.tokenize('X_TOKENIZER', 'X_RAW', 'X_TOKENIZED', char_level=True)
+
+    # ====================
+    def tokenize_outputs(self):
+        """Tokenize outputs (y)"""
+
+        print(MESSAGE_TOKENIZING_OUTPUTS)
+        self.tokenize('Y_TOKENIZER', 'Y_RAW', 'Y_TOKENIZED', char_level=False)
+
+    # ====================
+    def tokenize(self, tokenizer_name: str, raw_asset_name: str,
+                 tokenized_asset_name: str, char_level: bool):
+        """Open an asset, create and fit a Keras tokenizer, tokenize the
+        asset, and save both the tokenizer and the tokenized data"""
+
+        data = self.get_asset(raw_asset_name)
+        tokenizer = Tokenizer(
+            oov_token='OOV', filters='', char_level=char_level)
+        tokenizer.fit_on_texts(data)
+        tokenized = tokenizer.texts_to_sequences(data)
+        self.save_asset(tokenized, tokenized_asset_name)
+        print(SAVED_TOKENIZED_SAMPLES.format(
+            num_samples=len(tokenized),
+            tokenized_asset_name=tokenized_asset_name
+        ))
+        self.save_asset(tokenizer, tokenizer_name)
+        print(SAVED_TOKENIZER.format(
+            num_categories=self.get_num_categories(tokenizer_name),
+            tokenizer_name=tokenizer_name
+        ))
+
+    # ====================
+    def convert_inputs_to_numpy(self):
+        """Convert inputs (X) to numpy format"""
+
+        print(MESSAGE_CONVERTING_INPUTS_TO_NUMPY)
+        self.pickle_to_numpy('X_TOKENIZED', 'X')
+
+    # ====================
+    def convert_outputs_to_numpy(self):
+        """Convert outputs (y) to numpy format"""
+
+        print(MESSAGE_CONVERTING_OUTPUTS_TO_NUMPY)
+        self.pickle_to_numpy('Y_TOKENIZED', 'Y')
+
+    # ====================
+    def pickle_to_numpy(self, pickle_asset_name: str, numpy_asset_name: str):
+        """Open a .pickle asset, convert to a numpy array, and save as a .npy
+        asset"""
+
+        data_pickle = self.get_asset(pickle_asset_name)
+        data_np = np.array(data_pickle)
+        self.save_asset(data_np, numpy_asset_name)
+        print(SAVED_NUMPY_ARRAY.format(
+            shape=str(data_np.shape),
+            numpy_asset_name=numpy_asset_name
+        ))
+
+    # ====================
+    def preview_samples(self, k: int = 10):
+
+        X = self.get_asset('X', mmap=True)
+        y = self.get_asset('Y', mmap=True)
+        all_idxs = range(len(X))
+        idxs = sample(all_idxs, k)
+        outputs = []
+        for idx in idxs:
+            restored = self.Xy_to_output(X[idx], y[idx])
+            outputs.append((f"{idx:,}", restored))
+        outputs_df = pd.DataFrame(outputs, columns=['Index', 'Output'])
+        display_or_print(outputs_df)
+
+    # === PREPROCESSING ===
+
+    # ====================
+    def preprocess_raw_str(self, raw_str):
+        """Preprocess a raw string for input to a model"""
+
+        if self.capitalisation is True:
+            input_str = raw_str.lower()
+        else:
+            input_str = raw_str
+        for fc in self.feature_chars:
+            input_str = input_str.replace(fc, '')
+        return input_str
+
+    # ====================
+    def input_str_to_model_input(self, input_str):
+        """Prepare a raw string for input to a model"""
+
+        tokenized = self.tokenize_input_str(input_str)
+        encoded = self.encode_tokenized_str(tokenized)
+        return encoded
+
+    # ====================
+    def tokenize_input_str(self, input_str):
+        """Tokenize an input string"""
+
+        input_str = self.impose_seq_length(input_str)
+        tokenizer = self.get_asset('X_TOKENIZER')
+        tokenized = tokenizer.texts_to_sequences([input_str])
+        return tokenized
+
+    # ====================
+    def impose_seq_length(self, input_str):
+        """Check that the length of an input string is less than or equal
+        to the model sequence length."""
+
+        if len(input_str) > self.seq_length:
+            error_msg = ERROR_INPUT_STR_TOO_LONG.format(
+                seq_len=self.seq_length,
+                len_input_len=len(input_str)
+            )
+            raise ValueError(error_msg)
+        if len(input_str) < self.seq_length:
+            if len(input_str) < self.seq_length:
+                # ⳨ chosen to trigger OOV. Change if restoring features
+                # for Coptic language!
+                # TODO: Concat zeros instead of using OOV
+                print(WARNING_INPUT_STR_TOO_SHORT)
+                input_str = input_str + \
+                    ('⳨' * (self.seq_length - len(input_str)))
+        return input_str
+
+    # ====================
+    def encode_tokenized_str(self, tokenized: str):
+
+        num_X_categories = self.get_num_categories('X_TOKENIZER')
+        encoded = to_categorical(tokenized, num_X_categories)
+        return encoded
+
+    # === PREDICTION & PREVIEW
+
+    # ====================
+    def predict(self, raw_str: str):
+
+        input_str = self.preprocess_raw_str(raw_str)
+        X_encoded = self.input_str_to_model_input(raw_str)
+        predicted = self.model.predict(X_encoded)
+        y = np.argmax(predicted, axis=2)[0]
+        y_tokenizer = self.get_asset('Y_TOKENIZER')
+        y_decoded = self.decode_class_list(y_tokenizer, y)
+        output_parts = [self.char_and_class_to_output_str(X_, y_)
+                        for X_, y_ in zip(input_str, y_decoded)]
+        output = ''.join(output_parts)
+        return output
+
+    # ====================
+    def predict_doc(self, raw_str: str) -> list:
+
+        text = self.preprocess_raw_str(raw_str)
+        if self.spaces is True:
+            all_words = []
+            prefix = ''
+            while text:
+                restore_until = self.seq_length - len(prefix)
+                text_to_restore = prefix + text[:restore_until]
+                text = text[restore_until:]
+                chunk_restored = self.predict(text_to_restore).split()
+                prefix = ''.join(chunk_restored[-5:])
+                all_words.extend(chunk_restored[:-5])
+            output = ' '.join(all_words)
+            # Add any text remaining in 'prefix'
+            if prefix:
+                output = output + ' ' + self.predict(prefix).strip()
+        else:
+            raise ValueError(ERROR_SPACES_FALSE_NOT_IMPLEMENTED)
+        return output
+
+    # ====================
+    def Xy_to_output(self, X: list, y: list) -> str:
+        """Generate a raw string (text with features) from model input (X)
+        and output (y)"""
+
+        X_tokenizer = self.get_asset('X_TOKENIZER')
+        X_decoded = X_tokenizer.sequences_to_texts([X])[0].replace(' ', '')
+        y_tokenizer = self.get_asset('Y_TOKENIZER')
+        y_decoded = self.decode_class_list(y_tokenizer, y)
+        output_parts = [self.char_and_class_to_output_str(X_, y_)
+                        for X_, y_ in zip(X_decoded, y_decoded)]
+        output = ''.join(output_parts)
+        return output
+
+    # === MODEL ADMIN & TRAINING ===
+
+    # ====================
+    def get_num_categories(
+        self,
+        tokenizers: Str_or_List_of_Str
+    ) -> Int_or_Tuple_of_Int:
+        """Get the number of categories in one or more tokenizers.
+
+        If a single tokenizer name is passed, the return value is an integer.
+        If a list of tokenizer names is passed, the return value is a tuple of
+        integers."""
+
+        if isinstance(tokenizers, str):
+            tokenizer = self.get_asset(tokenizers)
+            num_categories = len(tokenizer.word_index) + 1
+        elif isinstance(tokenizers, list):
+            tokenizers = [self.get_asset(t) for t in tokenizers]
+            num_categories = tuple([len(t.word_index) + 1 for t in tokenizers])
+        return num_categories
 
     # ====================
     def add_model(self, model_attrs: dict):
@@ -426,24 +689,6 @@ class FeatureRestorer:
         ))
 
     # ====================
-    def get_model_attrs(self):
-
-        model_attrs = {
-            attr: value for attr, value in self.__dict__.items()
-            if attr.startswith('model_')
-        }
-        return model_attrs
-
-    # ====================
-    def get_class_attrs(self):
-
-        class_attrs = {
-            attr: value for attr, value in self.__dict__.items()
-            if not attr.startswith('model_')
-        }
-        return class_attrs
-
-    # ====================
     def train_model(self, epochs: int):
 
         num_train = len(self.train_or_val_idxs('TRAIN'))
@@ -478,20 +723,6 @@ class FeatureRestorer:
         return load_file(model_attrs_path)
 
     # ====================
-    def show_model_attrs(self):
-
-        model_attrs = self.get_model_attrs()
-        model_attrs_df = pd.DataFrame.from_dict(model_attrs, orient='index')
-        display_or_print(model_attrs_df)
-
-    # ====================
-    def show_class_attrs(self):
-
-        class_attrs = self.get_class_attrs()
-        class_attrs_df = pd.DataFrame.from_dict(class_attrs, orient='index')
-        display_or_print(class_attrs_df)
-
-    # ====================
     def show_model_log_file(self):
 
         log_file_df = pd.read_csv(self.model_log_file)
@@ -501,46 +732,6 @@ class FeatureRestorer:
     def get_model_root_path(self, model_name: str):
 
         return os.path.join(self.models_path, model_name)
-
-    # ====================
-    def predict(self, raw_str: str):
-
-        input_str = self.raw_str_to_input_str(raw_str)
-        if len(input_str) < self.seq_length:
-            # ⳨ chosen to trigger OOV. Change if restoring features for Coptic
-            # language.
-            print(WARNING_INPUT_STR_TOO_SHORT)
-            input_str = input_str + ('⳨' * (self.seq_length - len(input_str)))
-        tokenized = self.input_str_to_tokenized(input_str)
-        num_X_categories = self.get_num_categories('X_TOKENIZER')
-        X_encoded = to_categorical(tokenized, num_X_categories)
-        predicted = self.model.predict(X_encoded)
-        y = np.argmax(predicted, axis=2)[0]
-        y_tokenizer = self.get_asset('Y_TOKENIZER')
-        y_decoded = self.decode_class_list(y_tokenizer, y)
-        output_parts = [self.char_and_class_to_output_str(X_, y_)
-                        for X_, y_ in zip(input_str, y_decoded)]
-        output = ''.join(output_parts)
-        return output
-
-    # ====================
-    def predict_doc(self, raw_str: str) -> list:
-
-        text = self.raw_str_to_input_str(raw_str)
-        all_words = []
-        prefix = ''
-        while text:
-            restore_until = self.seq_length - len(prefix)
-            text_to_restore = prefix + text[:restore_until]
-            text = text[restore_until:]
-            chunk_restored = self.predict(text_to_restore).split()
-            prefix = ''.join(chunk_restored[-5:])
-            all_words.extend(chunk_restored[:-5])
-        output = ' '.join(all_words)
-        # Add any text remaining in 'prefix'
-        if prefix:
-            output = output + ' ' + self.predict(prefix).strip()
-        return output
 
     # ====================
     def new_model(self):
@@ -615,28 +806,6 @@ class FeatureRestorer:
         self.model_train_idxs, self.model_val_idxs = \
             train_test_split(keep_idxs, test_size=val_size)
         self.save_class_attrs()
-
-    # ====================
-    def input_str_to_tokenized(self, input_str):
-
-        if len(input_str) > self.seq_length:
-            error_msg = ERROR_INPUT_STR_TOO_LONG.format(
-                seq_len=self.seq_length,
-                len_input_len=len(input_str)
-            )
-            raise ValueError(error_msg)
-        return self.X_tokenize_input_str(input_str)
-
-    # ====================
-    def raw_str_to_input_str(self, raw_str):
-
-        if self.capitalisation is True:
-            input_str = raw_str.lower()
-        else:
-            input_str = raw_str
-        for fc in self.feature_chars:
-            input_str = input_str.replace(fc, '')
-        return input_str
 
     # === STATIC METHODS ===
 
