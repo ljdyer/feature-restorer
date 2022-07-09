@@ -64,7 +64,7 @@ SAVED_NUMPY_ARRAY = """Saved numpy array with shape {shape} to \
 SAVED_TOKENIZED_SAMPLES = """Saved {num_samples} tokenized samples to \
 {tokenized_asset_name}."""
 SAVED_MODEL_ATTRS = "Saved {num_attrs} model attributes to {model_attrs_path}"
-RAM_IN_USE = "RAM currently in use: {ram_in_use}%"
+MESSAGE_RAM_IN_USE = "RAM currently in use: {ram_in_use}%"
 MESSAGE_GENERATING_RAW_SAMPLES = "Generating raw samples from data provided..."
 MESSAGE_TOKENIZING_INPUTS = "Tokenizing model inputs (X)..."
 MESSAGE_TOKENIZING_OUTPUTS = "Tokenizing model outputs (y)..."
@@ -832,4 +832,5 @@ class FeatureRestorer:
     @staticmethod
     def show_ram_used():
 
-        print(RAM_IN_USE.format(psutil.virtual_memory().percent))
+        print(MESSAGE_RAM_IN_USE.format(
+            ram_in_use=psutil.virtual_memory().percent))
