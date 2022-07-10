@@ -608,7 +608,7 @@ class FeatureRestorer:
         for i in pbar:
             pbar.set_postfix(
                 {'ram_usage': f"{psutil.virtual_memory().percent}%"})
-            outputs.append(self.predict_single_doc(docs[i]]))
+            outputs.append(self.predict_single_doc(docs[i]))
         return only_or_all(outputs)
 
     # ====================
