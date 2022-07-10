@@ -1,10 +1,58 @@
 import os
 import pickle
 
+import pandas as pd
 import numpy as np
 from tqdm import tqdm as non_notebook_tqdm
 from tqdm.notebook import tqdm as notebook_tqdm
-from typing import Any
+from typing import Any, Union
+
+Str_or_List = Union[str, list]
+Int_or_Tuple = Union[int, tuple]
+Str_or_List_or_Series = Union[str, list, pd.Series]
+List_or_Tuple = Union[list, tuple]
+
+STR_OR_LIST_OR_SERIES_TYPE_ERROR = \
+    "Must have type list, str, or pandas.Series."
+STR_OR_LIST_TYPE_ERROR = "Must have type list, str, or pandas.Series."
+
+
+# ====================
+def only_or_all(input_: List_or_Tuple) -> Any:
+    """If the list or tuple contains only a single element, return that element.
+
+    Otherwise return the original list or tuple."""
+
+    if len(input_) == 1:
+        return input_[0]
+    else:
+        return input_
+
+
+# ====================
+def str_or_list_or_series_to_list(
+     input_: Str_or_List_or_Series) -> list:
+
+    if isinstance(input_, str):
+        return [input_]
+    elif isinstance(input_, pd.Series):
+        return input_.to_list()
+    elif isinstance(input_, list):
+        return input_
+    else:
+        raise TypeError(STR_OR_LIST_OR_SERIES_TYPE_ERROR)
+
+
+# ====================
+def str_or_list_to_list(
+     input_: Str_or_List) -> list:
+
+    if isinstance(input_, str):
+        return [input_]
+    elif isinstance(input_, list):
+        return input_
+    else:
+        raise TypeError(STR_OR_LIST_TYPE_ERROR)
 
 
 # ====================

@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from random import sample, shuffle
-from typing import Any, List, Tuple, Union
+from typing import Any, List
 
 import keras
 import numpy as np
@@ -22,11 +22,10 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 
-from helper import (display_or_print, get_tqdm, load_file,
-                    mk_dir_if_does_not_exist, save_file)
-
-Str_or_List_of_Str = Union[List[str], str]
-Int_or_Tuple_of_Int = Union[int, Tuple[int]]
+from helper import (Int_or_Tuple, Str_or_List, Str_or_List_or_Series,
+                    display_or_print, get_tqdm, load_file,
+                    mk_dir_if_does_not_exist, only_or_all, save_file,
+                    str_or_list_or_series_to_list, str_or_list_to_list)
 
 CLASS_ATTRS_FNAME = 'CLASS_ATTRS.pickle'
 MODEL_ATTRS_FNAME = 'MODEL_ATTRS.pickle'
@@ -568,7 +567,7 @@ class FeatureRestorer:
                 # ⳨ chosen to trigger OOV. Change if restoring features
                 # for Coptic language!
                 # TODO: Concat zeros instead of using OOV
-                print(WARNING_INPUT_STR_TOO_SHORT)
+                # print(WARNING_INPUT_STR_TOO_SHORT)
                 input_str = input_str + \
                     ('⳨' * (self.seq_length - len(input_str)))
         return input_str
@@ -584,6 +583,8 @@ class FeatureRestorer:
 
     # ====================
     def predict(self, raw_str: str):
+        """Get the predicted output for a string of length less than or
+        equal to the model sequence length"""
 
         input_str = self.preprocess_raw_str(raw_str)
         X_encoded = self.input_str_to_model_input(raw_str)
@@ -597,7 +598,17 @@ class FeatureRestorer:
         return output
 
     # ====================
-    def predict_doc(self, raw_str: str) -> str:
+    def predict_docs(self, docs: Str_or_List_or_Series) -> Str_or_List:
+        """Get the predicted output for a single doc, or a list
+        or pandas Series of docs."""
+
+        docs = str_or_list_or_series_to_list(docs)
+        outputs = [self.predict_single_doc(d) for d in docs]
+        return only_or_all(outputs)
+
+    # ====================
+    def predict_single_doc(self, raw_str: str) -> str:
+        """Get the predicted output for a document (any length)."""
 
         input_str = self.preprocess_raw_str(raw_str)
         if self.spaces is True:
@@ -659,23 +670,16 @@ class FeatureRestorer:
     # === MODEL ADMIN & TRAINING ===
 
     # ====================
-    def get_num_categories(
-        self,
-        tokenizers: Str_or_List_of_Str
-    ) -> Int_or_Tuple_of_Int:
+    def get_num_categories(self, tokenizers: Str_or_List) -> Int_or_Tuple:
         """Get the number of categories in one or more tokenizers.
 
         If a single tokenizer name is passed, the return value is an integer.
         If a list of tokenizer names is passed, the return value is a tuple of
         integers."""
 
-        if isinstance(tokenizers, str):
-            tokenizer = self.get_asset(tokenizers)
-            num_categories = len(tokenizer.word_index) + 1
-        elif isinstance(tokenizers, list):
-            tokenizers = [self.get_asset(t) for t in tokenizers]
-            num_categories = tuple([len(t.word_index) + 1 for t in tokenizers])
-        return num_categories
+        tokenizers = str_or_list_to_list(tokenizers)
+        num_categories = tuple([len(t.word_index) + 1 for t in tokenizers])
+        return only_or_all(num_categories)
 
     # ====================
     def add_model(self, model_attrs: dict):
