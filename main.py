@@ -605,10 +605,10 @@ class FeatureRestorer:
         docs = str_or_list_or_series_to_list(docs)
         outputs = []
         pbar = tqdm_(range(len(docs)))
-        for _ in pbar:
+        for i in pbar:
             pbar.set_postfix(
                 {'ram_usage': f"{psutil.virtual_memory().percent}%"})
-            outputs.append(self.predict_single_doc(docs.pop(0)))
+            outputs.append(self.predict_single_doc(docs[i]]))
         return only_or_all(outputs)
 
     # ====================
