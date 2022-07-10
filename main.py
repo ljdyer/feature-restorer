@@ -90,6 +90,9 @@ ERROR_SPACES_FALSE_NOT_IMPLEMENTED = 'Not implemented yet when spaces=False.'
 ERROR_ONE_OF_EACH_FALSE_NOT_IMPLEMENTED = """Not implemented yet when \
 one_of_each=False."""
 
+CHUNKER_NUM_PREFIX_WORDS = 5
+CHUNKER_NUM_PREFIX_CHARS = 10
+
 tqdm_ = get_tqdm()
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
@@ -594,25 +597,49 @@ class FeatureRestorer:
         return output
 
     # ====================
-    def predict_doc(self, raw_str: str) -> list:
+    def predict_doc(self, raw_str: str) -> str:
 
-        text = self.preprocess_raw_str(raw_str)
+        input_str = self.preprocess_raw_str(raw_str)
         if self.spaces is True:
-            all_words = []
-            prefix = ''
-            while text:
-                restore_until = self.seq_length - len(prefix)
-                text_to_restore = prefix + text[:restore_until]
-                text = text[restore_until:]
-                chunk_restored = self.predict(text_to_restore).split()
-                prefix = ''.join(chunk_restored[-5:])
-                all_words.extend(chunk_restored[:-5])
-            output = ' '.join(all_words)
-            # Add any text remaining in 'prefix'
-            if prefix:
-                output = output + ' ' + self.predict(prefix).strip()
+            output = self.predict_doc_spaces_true(input_str)
         else:
-            raise ValueError(ERROR_SPACES_FALSE_NOT_IMPLEMENTED)
+            output = self.predict_doc_spaces_false(input_str)
+        return output
+
+    # ====================
+    def predict_doc_spaces_true(self, input_str: str) -> str:
+
+        all_output = []
+        prefix = ''
+        while input_str:
+            restore_until = self.seq_length - len(prefix)
+            text_to_restore = prefix + input_str[:restore_until]
+            input_str = input_str[restore_until:]
+            chunk_restored = self.predict(text_to_restore).split()
+            prefix = ''.join(chunk_restored[-CHUNKER_NUM_PREFIX_WORDS:])
+            all_output.extend(chunk_restored[:-CHUNKER_NUM_PREFIX_WORDS])
+        output = ' '.join(all_output)
+        # Add any text remaining in 'prefix'
+        if prefix:
+            output = output + ' ' + self.predict(prefix).strip()
+        return output
+
+    # ====================
+    def predict_doc_spaces_false(self, input_str: str) -> str:
+
+        all_output = []
+        prefix = ''
+        while input_str:
+            restore_until = self.seq_length - len(prefix)
+            text_to_restore = prefix + input_str[:restore_until]
+            input_str = input_str[restore_until:]
+            chunk_restored = self.predict(text_to_restore)
+            prefix = ''.join(chunk_restored[-CHUNKER_NUM_PREFIX_CHARS:])
+            all_output.extend(chunk_restored[:-CHUNKER_NUM_PREFIX_CHARS])
+        output = ''.join(all_output)
+        # Add any text remaining in 'prefix'
+        if prefix:
+            output = output + + self.predict(prefix).strip()
         return output
 
     # ====================
