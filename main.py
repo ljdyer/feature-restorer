@@ -603,6 +603,12 @@ class FeatureRestorer:
         or pandas Series of docs."""
 
         docs = str_or_list_or_series_to_list(docs)
+        outputs = []
+        pbar = tqdm_(range(len(docs)))
+        for _ in pbar:
+            pbar.set_postfix(
+                {'ram_usage': f"{psutil.virtual_memory().percent}%"})
+            outputs.extend(self.predict_single_doc(docs.pop(0)))
         outputs = [self.predict_single_doc(d) for d in docs]
         return only_or_all(outputs)
 
@@ -678,6 +684,7 @@ class FeatureRestorer:
         integers."""
 
         tokenizers = str_or_list_to_list(tokenizers)
+        tokenizers = [self.get_asset(t) for t in tokenizers]
         num_categories = tuple([len(t.word_index) + 1 for t in tokenizers])
         return only_or_all(num_categories)
 
