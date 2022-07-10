@@ -639,7 +639,7 @@ class FeatureRestorer:
         output = ''.join(all_output)
         # Add any text remaining in 'prefix'
         if prefix:
-            output = output + + self.predict(prefix).strip()
+            output = output + self.predict(prefix).strip()
         return output
 
     # ====================
