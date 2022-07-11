@@ -365,7 +365,7 @@ class FeatureRestorer:
 
         X = []
         y = []
-        words = datapoint.split()
+        words = datapoint.split(' ')
         substrs = [' '.join(words[i:]) for i in range(len(words))]
         for substr in substrs:
             Xy = self.substr_to_Xy(substr)
@@ -631,7 +631,7 @@ class FeatureRestorer:
             restore_until = self.seq_length - len(prefix)
             text_to_restore = prefix + input_str[:restore_until]
             input_str = input_str[restore_until:]
-            chunk_restored = self.predict(text_to_restore).split()
+            chunk_restored = self.predict(text_to_restore).split(' ')
             prefix = ''.join(chunk_restored[-CHUNKER_NUM_PREFIX_WORDS:])
             all_output.extend(chunk_restored[:-CHUNKER_NUM_PREFIX_WORDS])
         output = ' '.join(all_output)
@@ -703,7 +703,7 @@ class FeatureRestorer:
         self.model_log_file = os.path.join(self.model_root_path, 'log.csv')
         self.model_attrs_file = \
             os.path.join(self.model_root_path, MODEL_ATTRS_FNAME)
-        self.train_val_split()
+        self.train_val_split(' ')
         self.save_model_attrs()
 
     # ====================
