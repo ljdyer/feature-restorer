@@ -703,7 +703,7 @@ class FeatureRestorer:
         self.model_log_file = os.path.join(self.model_root_path, 'log.csv')
         self.model_attrs_file = \
             os.path.join(self.model_root_path, MODEL_ATTRS_FNAME)
-        self.train_val_split(' ')
+        self.train_val_split()
         self.save_model_attrs()
 
     # ====================
