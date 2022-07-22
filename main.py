@@ -405,6 +405,8 @@ class FeatureRestorer:
         X = []
         y = []
         chars = list(substr)
+        if len(chars) < 1:
+            return None
         if chars[0] in self.feature_chars:
             # Substring can't begin with a feature char
             return None
